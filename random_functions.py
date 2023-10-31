@@ -1189,51 +1189,6 @@ def plot_tables():
     plt.legend()
     plt.show()
 
-def run_parflow():
-    q_list = [0.0001, 0.001, 0.01, 0.1, 1]
-    k_list = [0.0001, 0.001, 0.01, 0.1, 1]
-    wt_list = [0.5, 1, 2, 3]
-
-    for k in k_list:
-        for q in q_list:
-            for wt in wt_list:
-                if k>=q:
-                    # call the function here
-
-                    dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "parflow", f"{q}_{k}_{wt}")
-                    os.mkdir(dir_path)
-                    #outputs = os.listdir()#outputs directory)
-                    # move outputs to the new directory
-
-def steadystate_kinsol():
-    dir_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))), "scratch", "cslts", "miaari1", "ParFlow_scripts", "pfdir", "parflow", "examples", "tasks", "watertable")
-    scenarios = os.listdir(dir_path)
-    data = {"q": [], "k": [], "wt": [], "time": []}
-    for scenario in scenarios:
-        index = -1
-        print(scenario)
-        params = scenario.split("_")
-        data["q"].append(float(params[0]))
-        data["k"].append(float(params[1]))
-        data["wt"].append(float(params[2]))
-        scen_dir = os.path.join(dir_path, scenario)
-        kinsolfile = os.path.join(scen_dir, "watertable.out.kinsol.log")
-        filedata = open(kinsolfile)
-        lines = filedata.readlines()
-        time_kinsol = [x for x in lines if "KINSOL starting step for time" in x or "KINSolInit nni=    0  fnorm=" in x]
-        for i in range(1, len(time_kinsol)):
-            if "KINSolInit nni=    0  fnorm=" not in time_kinsol[i] and "KINSolInit nni=    0  fnorm=" not in time_kinsol[i-1]:
-                index = i-1
-                time = re.findall("\d+\.\d+",time_kinsol[index])
-                print(time)
-                time = float(time[0])
-                data["time"].append(time)
-                break
-
-    df = pd.DataFrame(data)
-    print(df)
-    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "all_settings.csv"), index=False)
-
 def plot_parflow_scenarios():
     file_path = "/p/project/cslts/miaari1/python_scripts/all_settings_v2.csv"
     df = pd.read_csv(file_path)
@@ -2028,25 +1983,25 @@ def prepare_plotsfrom_analytical_yehexample():
     plt.show()
 
 def parflow_to_csv():
-    name='/p/project/cslts/miaari1/python_scripts/parflow/comparewithanalytical/srivastavaandyeh_0-01_final/exfiltration'
-    z = list(range(5, 101, 10))
+    name='/p/project/cslts/miaari1/python_scripts/parflow/comparewithanalytical/infiltration_2/infiltration'
+    z = list(range(5, 401, 10))
 
     nt=2000
-    timesteps = [0, 1, 10, 50, 75]
+    timesteps = [0, 1, 10, 100, 1091]
+    timesteps = list(range(0,15,1))
     alldata = {"z": z}
     for t in timesteps:
         #t = 193
-        print(name + '.out.satur.'+('{:05d}'.format(t))+'.pfb')
+        print(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
         #data = pfr.read(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
         data = SLOTH.sloth.IO.read_pfb(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
         alldata[f"time={t}"] = data[:,0,0]
 
-    print(alldata)
+    #print(alldata)
     df = pd.DataFrame(alldata)
-    #print(df)
     df["z"] = df["z"]*0.01
     #print(df)
-    df.to_csv("/p/project/cslts/miaari1/python_scripts/numerical_pressure_yehexample.csv", index=False)
+    df.to_csv("/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_2.csv", index=False)
 
 def prepare_plotsfrom_analytical_drainage():
     plt.rcParams.update({'font.size': 14})
@@ -2179,26 +2134,32 @@ def plot_qk_ss():
 
     def powerlaw_fit(h, a, b):
         y = a*(h**b)
+        #y = (a)*np.exp(-b*h)
         return y
     plt.rcParams.update({'font.size': 22})
-    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
+    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases.csv' # with watertable depth, n, alfa, theta, Ks from rosetta
+    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/qk_ss.csv' # without watertable depth
     
     q_column = "q"
     k_column = "k"
     d_column = "d"
+    n_column = "n"
+    alfa_column = "alfa"
+    theta_r_column = "theta_r"
+    theta_s_column = "theta_s"
     t_column = "time"
     df = pd.read_csv(filepath)
-    #print(df)
+    print(df)
     #df = df[:16]
 
     #d = 4 #4m watertable depth
-    alfa = 1
     #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
-    n = 2
-    Ks = 1 #m/hr
-    theta_s = 1
-    theta_r = 0.2
+
+    #alfa = 1
+    #n = 2
+    #theta_s = 1
+    #theta_r = 0.2
 
     t_list = []
     x_axis = []
@@ -2207,17 +2168,26 @@ def plot_qk_ss():
         q = df[q_column].iloc[i]
         k = df[k_column].iloc[i]
         d = df[d_column].iloc[i]
+        n = df[n_column].iloc[i]
+        alfa = df[alfa_column].iloc[i]
+        theta_r = df[theta_r_column].iloc[i]
+        theta_s = df[theta_s_column].iloc[i]
         t = df[t_column].iloc[i]
         if k>=q and t!=0:
             #q = q/Ks
             #k = k/Ks
             #d = alfa*d
-            #t = (alfa*Ks*t)/(theta_s-theta_r)
+            #t = (alfa*k*t)/(theta_s-theta_r)
             #L = alfa*d
             
             x = q/k
             y = (k*k*t/(q*d*d*alfa))**(1-1/n) # best performance
-            #t_pred = y*q*d*d*alfa/(k*k*t)
+            #y = (k*t/(d*d*alfa))**(1-1/n)
+            #y = (q*q*t/(k*alfa*d*d))**(1-1/n)
+            #y = (q*d*d*alfa/(k*k*t))**(1-1/n)
+            
+            #y_pred = 1.9886875606876062*(x**(-0.5468849399415959))
+            #t_pred = (y_pred*y_pred*q*alfa*d*d)/(k*k)
             #t_list.append(abs(t_pred-t))
             y_axis.append(y)
             x_axis.append(x)
@@ -2231,11 +2201,9 @@ def plot_qk_ss():
 
     # Generate data points for the fitted curve
     y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
+
     R_square = r2_score(y_axis, y_fit)
     print(f"R2 = {R_square}")
-    if R_square <0:
-        print("failed")
-        return
     MSE = np.square(np.subtract(y_axis,y_fit)).mean()
     print(f"MSE = {MSE*10**-9} x10⁹")
     RMSE = math.sqrt(MSE)
@@ -2249,33 +2217,31 @@ def plot_qk_ss():
     #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
     #plt.scatter(x_axis, t_list, s=30, facecolors='r', edgecolors='r')
 
-    # data points fitted from libreoffice
-    #libreoffice_fit = [powerlaw_fit(x, 5.575373728535052, -1.0569206855416737) for x in x_axis]
-    #R_square_libre = r2_score(y_axis, libreoffice_fit)
-    #print(f"R2 = {R_square_libre}")
-
     plt.figure(figsize=(16,9))
     plt.grid(True)
     #plt.plot(x_axis, libreoffice_fit, color="green", label="libreoffice")
     plt.scatter(x_axis, y_axis, s=30, facecolors='r', edgecolors='r')
-    plt.plot(x_axis, y_fit, color="black", label="fitted")
+    #plt.plot(x_axis, y_fit, color="black", label="fitted")
+    plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
     plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
     
     plt.xlabel("q/k (-)")
     plt.xscale("log")
-    plt.ylabel("(k²t/αqd²)^(1-1/n) (-)")
+    #plt.ylabel("(q²t/kαd²)^(1-1/n) (-)")
+    plt.ylabel("(kt/αd²)^(1-1/n) (-)")
+    
     plt.yscale("log")
     plt.show()
 
-def plot_qk_t_ss():
+def plot_qk_ss_drainage():
     from scipy.optimize import curve_fit
     from sklearn.metrics import r2_score, mean_absolute_error
     import math
-
+    print("drainage case")
     def powerlaw_fit(h, a, b):
-        #y = a*(h**b)
+        y = (a)*(h**b)
         # decay function
-        y = a*np.exp(-b*h)
+        #y = (a)*np.exp(-b*h)
         return y
     plt.rcParams.update({'font.size': 22})
     filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
@@ -2288,12 +2254,12 @@ def plot_qk_t_ss():
     df = pd.read_csv(filepath)
 
     df = df.dropna()
-    print(df)
+    #print(df)
     
     alfa = 1
     #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
     n = 2
-    Ks = 1 #m/hr
+    #Ks = 1 #m/hr
     theta_s = 1
     theta_r = 0.2
 
@@ -2313,9 +2279,11 @@ def plot_qk_t_ss():
             #L = alfa*d
             
             x = k
-            y = t
-            #y = (k*k*t/(q*d*d*alfa))**(1-1/n) # best performance
-            #t_pred = y*q*d*d*alfa/(k*k*t)
+            #y = ((alfa*d*d)/((t)))**(1-1/n) #best performance
+            y = ((alfa*d*d)/((t)))**(1-1/n)
+            #y = t
+            #y_pred = (3.4743488481411937)*(x**(-0.43044273123818805))
+            #t_pred = (y_pred*y_pred*alfa*d*d)/(Ks)
             #t_list.append(abs(t_pred-t))
             y_axis.append(y)
             x_axis.append(x)
@@ -2328,41 +2296,33 @@ def plot_qk_t_ss():
     print(f"Fitted a: {a_fit} and b:{b_fit}")
 
     # Generate data points for the fitted curve
-    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
-    R_square = r2_score(y_axis, y_fit)
-    print(f"R2 = {R_square}")
-    if R_square <0:
-        print("failed")
-        return
-    MSE = np.square(np.subtract(y_axis,y_fit)).mean()
-    print(f"MSE = {MSE*10**-9} x10⁹")
-    RMSE = math.sqrt(MSE)
-    print(f"RMSE = {RMSE}")
-    MAE = mean_absolute_error(y_axis, y_fit)
-    print(f"MAE = {MAE}")
-
-    # calculate difference in t
-    #print(t_list)
-    #print(f"avg t = {np.mean(t_list)}")
+    x_fit = [10**-4, 10**-3, 10**-2, 10**-1, 1]
+    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_fit]
+    #R_square = r2_score(y_axis, y_fit)
+    #print(f"R2 = {R_square}")
+    #if R_square <0:
+    #    print("failed")
+    #    return
+    #MSE = np.square(np.subtract(y_axis,y_fit)).mean()
+    #print(f"MSE = {MSE*10**-9} x10⁹")
+    #RMSE = math.sqrt(MSE)
+    #print(f"RMSE = {RMSE}")
+    #MAE = mean_absolute_error(y_axis, y_fit)
+    #print(f"MAE = {MAE}")
     #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
-    #plt.scatter(x_axis, t_list, s=30, facecolors='r', edgecolors='r')
-
-    # data points fitted from libreoffice
-    #libreoffice_fit = [powerlaw_fit(x, 5.575373728535052, -1.0569206855416737) for x in x_axis]
-    #R_square_libre = r2_score(y_axis, libreoffice_fit)
-    #print(f"R2 = {R_square_libre}")
 
     plt.figure(figsize=(16,9))
     plt.grid(True)
-    #plt.plot(x_axis, libreoffice_fit, color="green", label="libreoffice")
     plt.scatter(x_axis, y_axis, s=30, facecolors='r', edgecolors='r')
-    plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
-    plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
+    plt.plot(x_fit, y_fit, color="black", label="fitted")
+    #plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
+    #plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
+    plt.annotate(f"R²={round(0.9461954598365823, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 0.1), color="black")
     
-    plt.xlabel("q/k (-)")
+    plt.xlabel("k (m/hr)")
     plt.xscale("log")
-    plt.ylabel("(k²t/αqd²)^(1-1/n) (-)")
-    #plt.yscale("log")
+    plt.ylabel("(αd²/t)^(1-1/n) (m/hr)")
+    plt.yscale("log")
     plt.show()
 
 def plot_ss_profiles():
@@ -2450,114 +2410,6 @@ def plot_analytical_numerical():
     plt.ylabel("Soil depth (m)")
     plt.show()
 
-def fit_exp(x_data, y_data, theta_r, theta_s, n,m):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.optimize import curve_fit
-    plt.rcParams.update({'font.size': 22})
-
-    # Define the exponential function to fit
-    def exponential_func(x, alfa):
-        return theta_r + (theta_s-theta_r)*(np.exp(alfa * x))
-    def gardner_theta(h, a, b):
-        theta = a*(h**(-b))
-        return theta
-    def gardner(h, a, c):
-        k = a*np.exp(-c*h)
-        return k
-    # Generate or load your data (x and y arrays)
-    #x_data = np.array([0, 1, 2, 3, 4, 5])
-    #y_data = np.array([1.0, 2.7, 7.4, 20.1, 54.6, 148.4])
-
-    # Fit the data to the exponential function
-    #x_data = [h/100 for h in range(0, 100000)]
-    #fitting_y = y_data[100:]
-    #fitting_x = x_data[100:]
-    #print(len(fitting_x))
-    #fitting_y = fitting_y[:-899899]
-    #fitting_x = fitting_x[:-899899]
-    #print(len(fitting_x))
-    #params, covariance = curve_fit(gardner, x_data, y_data)
-    # Extract the fitted parameters
-    #a_fit, b_fit = params
-    a_fit = 1
-    b_fit = 2.5616931634881337
-    # Optional: Calculate the standard errors for the parameters
-    #std_errors = np.sqrt(np.diag(covariance))
-
-    # Print the results
-    print(f"Fitted a: {a_fit} and c:{b_fit}")
-    #print(f"Standard Error for a: {std_errors[0]}, {std_errors[1]}")
-
-    # Generate data points for the fitted curve
-    #x_fit = np.linspace(0.2, 1, 100)
-    #x_fit = [x/100 for x in range(0,100000)]
-    #a = a_fit
-    #y_fit = [a * np.exp(b * x) for x in x_fit]
-    y_fit = [gardner(x, a_fit, b_fit) for x in x_data]
-    #my_y_fit = [0.2 + (1-0.2)*(np.exp(2.62 * x)) for x in x_fit]
-
-    # Plot the original data and the fitted curve
-    #plt.figure(figsize=(10, 6))
-    #x_data = [-h/100 for h in range(0, 100000)]
-    plt.plot(x_data, y_data, label='Van Genuchten-Mualem Model')
-    plt.plot(x_data, y_fit, 'r', label='Gardner model')
-    plt.ylabel('Hydraulic conductivity (m/hr)')
-    plt.xlabel('Pressure (m)')
-    plt.xscale("log")
-    #plt.gca().invert_xaxis()
-    plt.title('Van Genuchten-Mualem vs Gardner models')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-def plot_vangenuchten():
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    # Define the van Genuchten-Mualem model function for pressure head (h) and soil water content (θ)
-    #def van_genuchten_mualem_h(θ, θs, θr, alfa, n, m):
-    #    S = (θ - θr) / (θs - θr)
-    #    h = (-1 / alfa) * ((S**(-1/m) - 1)**(1/n))
-    #    return h
-    def van_genuchten_maulem_theta(theta_r, theta_s, alfa, n, m, h):
-        theta = theta_r + (theta_s-theta_r)/((1+((alfa*h)**n))**m)
-        return theta
-
-    def van_genuchten_maulem_k(alfa, h, n, m):
-        k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
-        return k
-    # Define the parameter values for the model
-    θs = 1     # Saturated water content
-    θr = 0.2    # Residual water content
-    alfa = 1     # Inverse of air entry pressure (1/cm)α
-    n = 2       # Van Genuchten parameter
-    m = 1.0 - 1.0 / n  # Mualem parameter
-    theta_r = θr
-    theta_s = θs
-    # Generate a range of soil water content values
-    #θ_values = np.linspace(θr+0.01, θs, 100)
-
-    # Calculate pressure head (h) values using the van Genuchten-Mualem model
-    #h_values = [van_genuchten_mualem_h(θ, θs, θr, alfa, n, m) for θ in θ_values]
-    h_values = [h/1000 for h in range(1, 10000)]
-    #x_data = [-h/100 for h in range(0, 1000000)]
-    θ_values = [van_genuchten_maulem_k(alfa, h, n, m) for h in h_values]
-    #k_values = [van_genuchten_maulem_k(alfa, h, n, m) for h in h_values]
-    fit_exp(h_values, θ_values, theta_r, theta_s, n, m)
-    return
-    # Create a plot to visualize the model
-    #plt.figure(figsize=(10, 6))
-    plt.plot(h_values, θ_values, label='van Genuchten-Mualem Model')
-    plt.ylabel('Soil Water Content θ')
-    plt.xlabel('Pressure Head (m)')
-    plt.xscale("log")
-    plt.gca().invert_xaxis()
-    plt.title('Van Genuchten-Mualem vs Gardner models')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 def SD_downscaling_example():
     # Import necessary libraries
@@ -2596,4 +2448,221 @@ def SD_downscaling_example():
     print(f"Downscaled precipitation for elevation {new_elevation[0][0]}: {downscaled_precipitation[0]:.2f} units")
     plt.show()
 
-plot_qk_t_ss()
+def analytical_pressure():
+    import math
+    # define variables in cm and hr
+    L_star = 350 #cm
+    #L_star = 400 #cm
+    Ks = 10 #cm/hr
+    #alfa = 0.1 # 1/cm
+    # alfa = 0.0262 perfect for t=1091
+    alfa = 0.025616931634881337 # NOT 1/cm but fitted based on K from Van Genuchten
+    #Ss = 0.4
+    Ss = 1
+    #Sr = 0.06
+    Sr = 0.2
+    #qa_star = 0.1 #cm/hr
+    qa_star = 0 #cm/hr
+    qb_star = 0.01 #cm/hr
+    #qb_star = 0.1 #cm/hr
+    pressure_0 = 0 #cm
+
+    # define dimensionless parameters
+    L = alfa*L_star
+    qa = qa_star/Ks
+    qb = qb_star/Ks
+
+    # get the roots for this L
+    roots = find_roots_from_plot(L)
+
+    # define layers
+    data = {}
+    data = {"z": [*range(1, L_star+1, 1)]}
+    # calculate for timesteps
+    timesteps = range(10, 2002, 1)
+    #timesteps = [0.0, 0.01, 0.03, 0.05, 0.07, 0.09, 0.1]
+    #timesteps = [1, 3, 5, 10, 15, 20, 30, 50, 75, 100]
+    #timesteps = [1090,1091]
+    for t_star in timesteps:
+        print(t_star)
+        data[f"time={t_star}"] = []
+        t = (alfa*Ks*t_star)/(Ss-Sr)
+        for z_star in data["z"]:
+            #plotit = True
+            
+            # for z_star=0 bottom layer, z_star=L_star top layer
+            z = alfa*z_star
+            #if z>0:
+            #    plotit = False
+            residues = sum_residue(L, t, z, roots)
+            #if not plotit:
+            #    print(residues)
+            #    return
+            #print(f"for t_star={t_star} and z={z_star} the residue is: {residues}")
+            
+            K = qb - (qb - np.exp(alfa*pressure_0))*np.exp(-z) - 4*(qb - qa)*(np.exp((L-z)/2)*np.exp(-t/4))*residues
+
+            K_star = K*Ks
+            pressure = (np.log(K_star/Ks))/alfa
+            data[f"time={t_star}"].append(pressure)
+        #diff = []
+        #for i in range(len(data["z"])):
+        #    if t_star-1>=timesteps[0] and abs(abs(data[f"time={t_star-1}"][i]) - abs(data[f"time={t_star}"][i])) < 1e-7:
+        #        diff.append(True)
+        #if len(diff) == len(data["z"]):
+        #    print(f"timestep= {t_star}")
+        #    return
+
+
+        if  t_star-1>=timesteps[0] and np.square(np.subtract(data[f"time={t_star-1}"],data[f"time={t_star}"])).mean() < 1e-10:
+            print("steady state reached on MSE")
+            print(f"timestep= {t_star}")
+            print(f'MSE= {np.square(np.subtract(data[f"time={t_star-1}"],data[f"time={t_star}"])).mean()}')
+            return
+            
+    
+    df = pd.DataFrame(data)
+    print(df)
+    df = df/100
+    #t1 = df["time=1090"].to_list()
+    #t2 = df["time=1091"].to_list()
+
+    #MSE = np.square(np.subtract(t1,t2)).mean()
+    #print(f"MSE = {MSE}")
+    #RMSE = math.sqrt(MSE)
+    #print(f"RMSE = {RMSE}")
+    
+
+def parflow_namelist():
+    import random
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    filepath = "/p/project/cslts/miaari1/python_scripts/infiltration.tcl"
+    VG_params_path = "/p/project/cslts/miaari1/python_scripts/WaterFlowParameters.csv"
+    f = open(filepath, "r")
+    namelist = f.readlines()
+    f.close()
+
+    k_range = [0.00001, 10]
+    q_range = [0.00001, 10]
+    #alfa_range = [0.5, 10]
+    #n_range = [1, 3]
+    d_range = [1, 10]
+    #thetar_range = [0, 0.2]
+    #thetas_range = [0.5, 1]
+    VG_params = pd.read_csv(VG_params_path)
+    VG_indexes = [0,1,2,3,4,5,6,7,8,9,10,11]
+
+    k_namelist = namelist[64]
+    q_namelist = namelist[214]
+    d_namelist = namelist[54]
+    Nz_namelist = namelist[31]
+    alfa_namelist1 = namelist[142]
+    alfa_namelist2 = namelist[151]
+    n_namelist1 = namelist[143]
+    n_namelist2 = namelist[152]
+    thetar_namelist = namelist[153]
+    thetas_namelist = namelist[154]
+
+    for i in range(200):
+        new_namelist = namelist
+        case_path = os.path.join(dir_path, f"test_case{i}")
+        os.mkdir(case_path)
+
+        VG_index = random.choice(VG_indexes)
+        alfa = VG_params["Alpha"].iloc[VG_index]
+        n = VG_params["n"].iloc[VG_index]
+        theta_r = VG_params["Sr"].iloc[VG_index]
+        theta_s = VG_params["Ss"].iloc[VG_index]
+        k = VG_params["Ks"].iloc[VG_index]
+
+        q_k = random.uniform(0.01, 0.1)
+        q = q_k * k
+        #k = random.uniform(k_range[0], k_range[1])
+        #q = random.uniform(q_range[0], min(k, 1))
+        
+        new_namelist[64] = k_namelist.replace("0.01",f"{k}")
+        new_namelist[214] = q_namelist.replace("0.001", f"{q}")
+        #alfa = round(random.uniform(alfa_range[0], alfa_range[1]),2)
+        #n = round(random.uniform(n_range[0], n_range[1]),2)
+        new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
+        new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
+        new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
+        new_namelist[152] = n_namelist2.replace("2.0", f"{n}")
+        #theta_r = round(random.uniform(thetar_range[0], thetar_range[1]),2)
+        #theta_s = round(random.uniform(thetas_range[0], thetas_range[1]),2)
+        new_namelist[153] = thetar_namelist.replace("0.2", f"{theta_r}")
+        new_namelist[154] = thetas_namelist.replace("1.0", f"{theta_s}")
+        d = round(random.uniform(d_range[0], d_range[1]),1)
+        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
+        new_namelist[31] = Nz_namelist.replace("40", f"{int(d*10)}")
+
+        settings = ["k,q,alfa,n,theta_r,theta_s,d",f"{k}",f"{q}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
+        with open(os.path.join(dir_path, f"test_case{i}", "settings.txt"),'w') as settingsfile:
+            settingsfile.write('\n'.join(settings))
+        settingsfile.close()
+
+        with open(os.path.join(dir_path, f"test_case{i}", "infiltration.tcl"), 'w') as tclfile:
+            tclfile.write('\n'.join(new_namelist))
+        tclfile.close()
+    return
+
+def simulation_bash():
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    filepath = "/p/project/cslts/miaari1/submit_simulation.sh"
+    f = open(filepath, "r")
+    sbatch = f.readlines()
+    f.close()
+    sbatch = sbatch[:13]
+    for i in range(200):
+        #case_path = os.path.join(dir_path, f"test_case{i}")
+        case_path = f"cd /p/scratch/cslts/miaari1/testcases/test_case{i}"
+        run_command = "tclsh infiltration.tcl"
+        sbatch.append(case_path)
+        sbatch.append(run_command)
+    
+    with open("/p/project/cslts/miaari1/submit_simulation_advanced.sh", 'w') as sbatchfile:
+        sbatchfile.write('\n'.join(sbatch))
+    sbatchfile.close()
+
+
+def steadystate_kinsol():
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    data = {"q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "time": []}
+    for case_index in range(200):
+        reached = False
+        case_dir = os.path.join(dir_path, f"test_case{case_index}")
+        f = open(os.path.join(case_dir, "settings.txt"), "r")
+        settings = f.readlines()
+        f.close()
+
+        
+
+        kinsolfile = os.path.join(case_dir, "infiltration.out.kinsol.log")
+        filedata = open(kinsolfile)
+        lines = filedata.readlines()
+        time_kinsol = [x for x in lines if "KINSOL starting step for time" in x or "KINSolInit nni=    0  fnorm=" in x]
+        for i in range(1, len(time_kinsol)):
+            if "KINSolInit nni=    0  fnorm=" not in time_kinsol[i] and "KINSolInit nni=    0  fnorm=" not in time_kinsol[i-1]:
+                index = i-1
+                time = re.findall("\d+\.\d+",time_kinsol[index])
+                #print(time)
+                time = float(time[0])
+                data["time"].append(time)
+                data["k"].append(float(settings[1].replace("\n","")))
+                data["q"].append(float(settings[2].replace("\n","")))
+                data["alfa"].append(float(settings[3].replace("\n","")))
+                data["n"].append(float(settings[4].replace("\n","")))
+                data["theta_r"].append(float(settings[5].replace("\n","")))
+                data["theta_s"].append(float(settings[6].replace("\n","")))
+                data["d"].append(float(settings[7].replace("\n","")))
+                reached = True
+                break
+            if i == len(time_kinsol)-1 and not reached:
+                print(f"not reached: {case_index}")
+    print(len(data["time"]))
+    df = pd.DataFrame(data)
+    print(df)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "testcases.csv"), index=False)
+
+
+simulation_bash()
