@@ -228,8 +228,7 @@ def plot_sum_residue(alfa):
         plt.show()
         return
     
-
-def analytical_pressure():
+def plot_t0_analytical():
     plt.rcParams.update({'font.size': 22})
     # define variables in m and hr
     L_star = 1 #m
@@ -237,7 +236,7 @@ def analytical_pressure():
     c = 10 #1/m 
     Ss = 0.4
     Sr = 0.06
-    qa_star = 0.000 #m/hr
+    qa_star = 0.00 #m/hr
     qb_star = 0.001 #m/hr
     pressure_0 = 0 #m
 
@@ -257,7 +256,7 @@ def analytical_pressure():
     print(z_values)
     # calculate for timesteps
     #timesteps = range(1, 2002, 1)
-    timesteps = [138]
+    timesteps = [1000]
     for t_star in timesteps:
         data[f"time={t_star}"] = []
         t = (c*Ks*t_star)/(Ss-Sr)
@@ -276,22 +275,24 @@ def analytical_pressure():
     
     df = pd.DataFrame(data)
     y_axis = df["z"].to_list()
-    timesteps = [138]
+    y_axis = [L_star-y for y in y_axis]
+    timesteps = [1000]
     for t in timesteps:
         x_axis = df[f"time={t}"].to_list()
         plt.plot(x_axis, y_axis, "k")
         plt.annotate(f"t=0", xy=(x_axis[-1], y_axis[-1]), color="black")
 
 
-
+def analytical_pressure():
     # define variables in m and hr
     L_star = 1 #m
     Ks = 0.01 #m/hr
-    c = 10 #1/m 
-    Ss = 0.4
-    Sr = 0.06
-    qa_star = 0.001 #m/hr
-    qb_star = 0.009 #m/hr
+    #c = 0.29793202 #1/m 
+    c = 10
+    Ss = 1
+    Sr = 0.2
+    qa_star = 0.0 #m/hr
+    qb_star = 0.001 #m/hr
     pressure_0 = 0 #m
 
     # define dimensionless parameters
@@ -310,7 +311,7 @@ def analytical_pressure():
     print(z_values)
     # calculate for timesteps
     #timesteps = range(1, 2002, 1)
-    timesteps = [0, 1, 3, 5, 10, 15, 20, 30, 50, 75]
+    timesteps = [10, 100, 1091]
     for t_star in timesteps:
         data[f"time={t_star}"] = []
         t = (c*Ks*t_star)/(Ss-Sr)
@@ -329,154 +330,11 @@ def analytical_pressure():
     
     df = pd.DataFrame(data)
     #print(df)
-    df.to_csv("/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure_example.csv", index=False)
+    df.to_csv("/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure.csv", index=False)
     return
 
 def plot_analytical_numerical():
-    # TODO log fit of VGM and Haverkamp and Gardner parameters
     plt.rcParams.update({'font.size': 22})
-    
-    # read from numerical solution
-    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example.csv"
-    numerical_solution = pd.read_csv(numerical_path)
-    y_axis = numerical_solution["z"].to_list()
-    #y_axis = [1-x for x in y_axis]
-    timesteps = [0, 1, 3, 10]#, 15, 20, 30, 50, 75]
-
-    index = 0
-    for t in timesteps:
-        index -= 1
-        x_axis = numerical_solution[f"time={t}"].to_list()
-        #x_axis = [x*-1 for x in x_axis]
-        #x_axis = [van_genuchten_maulem_k(alfa, abs(h), n, m) for h in x_axis]
-        plt.plot(x_axis, y_axis, "k--")
-        plt.annotate(f"{t}", xy=(x_axis[index], y_axis[index]), color="black")
-    
-
-    # read from analytical solution
-    analytical_path = "/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure_example.csv"
-    analytical_solution = pd.read_csv(analytical_path)
-    y_axis = analytical_solution["z"].to_list()
-    #y_axis = [1-x for x in y_axis]
-    index = 0
-    timesteps = [1, 3, 10]#, 15, 20, 30, 50, 75]
-    for t in timesteps:
-        index -= 1
-        x_axis = analytical_solution[f"time={t}"].to_list()
-        #x_axis = [x*-1 for x in x_axis]
-        #x_axis = [gardner(abs(h), c) for h in x_axis]
-        plt.plot(x_axis, y_axis, "k")
-        plt.annotate(f"{t}", xy=(x_axis[index], y_axis[index]), color="black")
-    
-
-    # read from numerical solution
-    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example_havekamp.csv"
-    numerical_solution = pd.read_csv(numerical_path)
-    y_axis = numerical_solution["z"].to_list()
-    #y_axis = [1-x for x in y_axis]
-    timesteps = [0, 1, 3, 10]#, 15, 20, 30, 50, 75]
-
-    index = 0
-    for t in timesteps:
-        index -= 1
-        x_axis = numerical_solution[f"time={t}"].to_list()
-        #x_axis = [x*-1 for x in x_axis]
-        #x_axis = [van_genuchten_maulem_k(alfa, abs(h), n, m) for h in x_axis]
-        plt.plot(x_axis, y_axis, "k:")
-        plt.annotate(f"{t}", xy=(x_axis[index], y_axis[index]), color="black")
-    
-    
-    #plt.gca().invert_yaxis()
-    plt.xlim([-0.3, 0])
-    plt.ylim([0, 1])
-    plt.xlabel("Pressure (m)")
-    plt.ylabel("Soil depth (m)")
-    #line_up, = plt.plot([], label='Analytical solution', color="blue")
-    line_up, = plt.plot([], 'k', label='Analytical (Gardner)')
-    line_mid, = plt.plot([], 'k:', label='Numerical (Haverkamp)')
-    line_down, = plt.plot([], 'k--', label='Numerical (Van Genuchten-Mualem)')
-    plt.legend(handles=[line_up, line_down, line_mid])
-    plt.show()
-    #plt.savefig("/p/project/cslts/miaari1/python_scripts/analyticalvsnumerical.png")
-
-def fit_exp(h_values, y_data, theta_r, theta_s, n,m):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.optimize import curve_fit
-    plt.rcParams.update({'font.size': 22})
-
-    # Define the gardner model function for pressure (h) and soil water content (θ) or relative permeability Kr
-    def gardner_theta(h, a, b):
-        theta = a*(h**(-b))
-        return theta
-    def gardner_k(h, c):
-        k = np.exp(-c*h)
-        return k
-    
-    # Fit the data to the exponential function
-    params, covariance = curve_fit(gardner_k, h_values, y_data)
-    # Extract the fitted parameters
-    a_fit = params
-    
-    # Print the results
-    print(f"Fitted a:{a_fit}")
-
-    # Generate data points for the fitted curve
-    y_fit = [gardner_k(x,a_fit) for x in h_values]
-
-    # Plot the original data and the fitted curve
-    plt.plot(h_values, y_data, label='Van Genuchten-Mualem Model')
-    plt.plot(h_values, y_fit, 'r', label='Gardner model')
-    plt.ylabel('Relative hydraulic conductivity Kr (-)')
-    #plt.ylabel('Water content θ (m³/m³)')
-    plt.xlabel('Pressure (m)')
-    plt.xscale("log")
-    plt.yscale("log")
-    #plt.gca().invert_xaxis()
-    plt.ylim([1e-12, 1])
-    plt.title('Van Genuchten-Mualem vs Gardner models')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-def plot_vangenuchten():
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    # Define the van Genuchten-Mualem model function for pressure head (h) and soil water content (θ) or relative permeability Kr
-    def van_genuchten_maulem_theta(theta_r, theta_s, alfa, n, m, h):
-        theta = theta_r + (theta_s-theta_r)/((1+((alfa*h)**n))**m)
-        return theta
-
-    def van_genuchten_maulem_k(alfa, h, n, m):
-        k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
-        return k
-    # Define the parameter values for the model
-    θs = 1     # Saturated water content
-    θr = 0.2    # Residual water content
-    alfa = 1     # Inverse of air entry pressure (1/m)α
-    n = 2       # Van Genuchten parameter
-    m = 1.0 - 1.0 / n  # Mualem parameter
-    theta_r = θr
-    theta_s = θs
-
-    # Calculate pressure head (h) values using the van Genuchten-Mualem model
-    h_values = [h/100 for h in range(1, 1000000)]
-    y_values = [van_genuchten_maulem_k(alfa, h, n, m) for h in h_values]
-    #y_values = [van_genuchten_maulem_theta(theta_r, theta_s, alfa, n, m, h) for h in h_values]
-    fit_exp(h_values, y_values, theta_r, theta_s, n, m)
-    return
-
-
-def fit_vangenuchten():
-    # TODO log fit of VGM and Haverkamp and Gardner parameters
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.optimize import curve_fit
-    import math
-    plt.rcParams.update({'font.size': 22})
-
     def van_genuchten_maulem_k(h, alfa, n):
         m = 1-1/n
         k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
@@ -488,37 +346,138 @@ def fit_vangenuchten():
         k = A/(A + (h**gamma))
         return k
     
+    # read from numerical solution
+    #alfa = 3.698059609737854
+    #n = 1.8990947179855633
+    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example_VGM.csv"
+    numerical_solution = pd.read_csv(numerical_path)
+    y_axis = numerical_solution["z"].to_list()
+    y_axis = [1-x for x in y_axis]
+    timesteps = [0, 1, 3, 10]
+    line_type = {"0":"-", "1":"--", "3":":", "10":"-."}
+    index = 0
+    for t in timesteps:
+        index -= 1
+        x_axis = numerical_solution[f"time={t}"].to_list()
+        #x_axis = [x*-1 for x in x_axis]
+        #x_axis = [van_genuchten_maulem_k(abs(h), alfa, n) for h in x_axis]
+        plt.plot(x_axis, y_axis, f"b{line_type[f'{t}']}")
+        if t==10:
+            plt.annotate(f"{t}", xy=(x_axis[-4], y_axis[-4]), color="b")
+        elif t!=0 and t!=10:
+            plt.annotate(f"{t}", xy=(x_axis[-1], y_axis[-1]), color="b")
+
+    # read from analytical solution
+    #c = 10
+    analytical_path = "/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure_example.csv"
+    analytical_solution = pd.read_csv(analytical_path)
+    y_axis = analytical_solution["z"].to_list()
+    y_axis = [1-x for x in y_axis]
+    index = 0
+    timesteps = [1, 3, 10]
+    for t in timesteps:
+        index -= 1
+        x_axis = analytical_solution[f"time={t}"].to_list()
+        #x_axis = [x*-1 for x in x_axis]
+        #x_axis = [gardner_k(abs(h), c) for h in x_axis]
+        plt.plot(x_axis, y_axis, f"k{line_type[f'{t}']}")
+        if t==10:
+            plt.annotate(f"{t}", xy=(x_axis[-40], y_axis[-40]), color="k")
+        else:
+            plt.annotate(f"{t}", xy=(x_axis[-1], y_axis[-1]), color="k")    
+
+    # read from numerical solution
+    #A = 0.008490091277910679
+    #gamma = 1.7664303986924215
+    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example_H.csv"
+    numerical_solution = pd.read_csv(numerical_path)
+    y_axis = numerical_solution["z"].to_list()
+    y_axis = [1-x for x in y_axis]
+    timesteps = [0, 1, 3, 10]#, 15, 20, 30, 50, 75]
+
+    index = 0
+    for t in timesteps:
+        index -= 1
+        x_axis = numerical_solution[f"time={t}"].to_list()
+        #x_axis = [x*-1 for x in x_axis]
+        #x_axis = [haverkamp_k(abs(h), A, gamma) for h in x_axis]
+        plt.plot(x_axis, y_axis, f"r{line_type[f'{t}']}")
+        if t==10:
+            plt.annotate(f"{t}", xy=(x_axis[-4], y_axis[-4]), color="r")
+        elif t!=0 and t!=10:
+            plt.annotate(f"{t}", xy=(x_axis[-1], y_axis[-1]), color="r")
+    
+    plt.gca().invert_yaxis()
+    plt.xlim([-0.3, 0])
+    plt.ylim([1, 0])
+    plt.xlabel("Pressure (m)")
+    plt.ylabel("Soil depth (m)")
+    line_up, = plt.plot([], 'k', label='Analytical (Gardner)')
+    line_mid, = plt.plot([], 'r', label='Numerical (Haverkamp)')
+    line_down, = plt.plot([], 'b', label='Numerical (Van Genuchten-Mualem)')
+    plt.legend(handles=[line_up, line_down, line_mid])
+    plt.show()
+    #plt.savefig("/p/project/cslts/miaari1/python_scripts/analyticalvsnumerical.png")
+
+
+def fit_SWCC():
+    # TODO log fit of VGM and Haverkamp and Gardner parameters
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.optimize import curve_fit
+    import math
+    plt.rcParams.update({'font.size': 22})
+
+    def van_genuchten_maulem_k(h, alfa, n):
+        m = 1-1/n
+        k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
+        return np.log(k)
+    def gardner_k(h, c):
+        k = np.exp(-c*h)
+        return np.log(k)
+    def haverkamp_k(h, A, gamma):
+        k = A/(A + (h**gamma))
+        return np.log(k)
+    
+    #alfa = 1 #/m
+    #n = 2
     c = 10 #/m
-    h_values = [h/100 for h in range(1, 100000)]
-    y_values = [gardner_k(h, c) for h in h_values]
+    
+    h_values = [h/1000 for h in range(1, 1000)]
+    y_values = [gardner_k(x, c) for x in h_values]
 
     params, covariance = curve_fit(haverkamp_k, h_values, y_values)
     A, gamma = params
     print(f"Fitted A: {A} and gamma: {gamma}")
-    y_haverkamp = [haverkamp_k(x, A, gamma) for x in h_values]
+    y_haverkamp = [np.exp(haverkamp_k(x, A, gamma)) for x in h_values]
 
-    params, covariance = curve_fit(van_genuchten_maulem_k, h_values, y_values)
+    #params, covariance = curve_fit(gardner_k, h_values, y_values, p0=[5])#, bounds=[[0.01, 0],[10, 3]])
+    #c = params
+    #print(f"Fitted c: {c}")
+    #y_G = [gardner_k(x, c) for x in h_values]
+
+    params, covariance = curve_fit(van_genuchten_maulem_k, h_values, y_values, bounds=[[0.01, 0.5],[15, 10]])
     alfa, n = params
-    print(f"Fitted alfa: {alfa} and n: {n}")
-    y_VG = [van_genuchten_maulem_k(x, alfa, n) for x in h_values]
+    print(f"Fitted alfa: {alfa}, n: {n}")
+    y_VG = [np.exp(van_genuchten_maulem_k(h, alfa, n)) for h in h_values]
+
+    y_values = [np.exp(gardner_k(x, c)) for x in h_values]
 
     # Plot the original data and the fitted curve
-    plt.plot(h_values, y_haverkamp, label='Haverkamp')
-    plt.plot(h_values, y_VG, label='Van Genuchten-Mualem')
-    plt.plot(h_values, y_values, label='Gardner')
+    #plt.plot(h_values, y_haverkamp, "r", label='Haverkamp')
+    plt.plot(h_values, y_VG, "b", label='Van Genuchten-Mualem')
+    plt.plot(h_values, y_values, "k", label='Gardner')
     plt.ylabel('Relative hydraulic conductivity Kr (-)')
     #plt.ylabel('Water content θ (m³/m³)')
     plt.xlabel('Pressure (m)')
     plt.xscale("log")
     plt.yscale("log")
     #plt.gca().invert_xaxis()
-    plt.ylim([1e-12, 1])
-    plt.title('Van Genuchten-Mualem vs Gardner models')
+    #plt.ylim([1e-12, 1])
+    plt.title('Log fitting Van Genuchten-Mualem model on Gardner model')
     plt.legend()
     plt.grid(True)
     plt.show()
-
-
 
 def pressure_vs_Kr():
     def van_genuchten_maulem_k(alfa, h, n, m):
@@ -558,8 +517,9 @@ def pressure_vs_Kr():
     plt.show()
 
 
+#plot_t0_analytical()
 #analytical_pressure()
 #plot_analytical_numerical()
 #c = 2.46491113
 #plot_sum_residue(c)
-fit_vangenuchten()
+fit_SWCC()

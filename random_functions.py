@@ -2137,10 +2137,12 @@ def plot_qk_ss():
         #y = (a)*np.exp(-b*h)
         return y
     plt.rcParams.update({'font.size': 22})
-    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases.csv' # with watertable depth, n, alfa, theta, Ks from rosetta
+    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv' # with watertable depth, n, alfa, theta, Ks from rosetta
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/qk_ss.csv' # without watertable depth
-    
+    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_constantq.csv' # without watertable depth
+    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_constantq_constantd.csv' # without watertable depth
+
     q_column = "q"
     k_column = "k"
     d_column = "d"
@@ -2151,7 +2153,11 @@ def plot_qk_ss():
     t_column = "time"
     df = pd.read_csv(filepath)
     print(df)
-    #df = df[:16]
+    #indexes = list(range(1165, 1215))
+    #df = df[~1165:~1215]
+    #df = df.drop(indexes, axis=0)
+    #df.reset_index(inplace=True, drop=True)
+    #print(df)
 
     #d = 4 #4m watertable depth
     #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
@@ -2160,7 +2166,6 @@ def plot_qk_ss():
     #n = 2
     #theta_s = 1
     #theta_r = 0.2
-
     t_list = []
     x_axis = []
     y_axis = []
@@ -2173,19 +2178,23 @@ def plot_qk_ss():
         theta_r = df[theta_r_column].iloc[i]
         theta_s = df[theta_s_column].iloc[i]
         t = df[t_column].iloc[i]
-        if k>=q and t!=0:
+        if k>=q and t!=0:# and (q/k)>=0.001:
             #q = q/Ks
             #k = k/Ks
             #d = alfa*d
             #t = (alfa*k*t)/(theta_s-theta_r)
             #L = alfa*d
             
-            x = q/k
-            y = (k*k*t/(q*d*d*alfa))**(1-1/n) # best performance
+            x = k
+            #x = (alfa*d*q/k)
+            #y = (k*k*t/(q*d*d*alfa))**(1-1/n) # best performance
             #y = (k*t/(d*d*alfa))**(1-1/n)
             #y = (q*q*t/(k*alfa*d*d))**(1-1/n)
-            #y = (q*d*d*alfa/(k*k*t))**(1-1/n)
-            
+            #y = (q*d*d*alfa/(k*k*t))**(1-1/n) # best fit
+            y = t#*k/d
+            #y = (k*t/d)#**(1-1/n)
+            #y = alfa*d*t*k*alfa/(theta_s-theta_r)#*q/d)
+
             #y_pred = 1.9886875606876062*(x**(-0.5468849399415959))
             #t_pred = (y_pred*y_pred*q*alfa*d*d)/(k*k)
             #t_list.append(abs(t_pred-t))
@@ -2204,6 +2213,7 @@ def plot_qk_ss():
 
     R_square = r2_score(y_axis, y_fit)
     print(f"R2 = {R_square}")
+    #return R_square
     MSE = np.square(np.subtract(y_axis,y_fit)).mean()
     print(f"MSE = {MSE*10**-9} x10⁹")
     RMSE = math.sqrt(MSE)
@@ -2216,22 +2226,47 @@ def plot_qk_ss():
     #print(f"avg t = {np.mean(t_list)}")
     #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
     #plt.scatter(x_axis, t_list, s=30, facecolors='r', edgecolors='r')
+    
+    #org_bin_centers, org_counts = plot_pdf(y_axis)
+    #fit_bin_centers, fit_counts = plot_pdf(y_fit)
+    #plt.plot(org_bin_centers, org_counts, linestyle='-', label="Simulations")#, marker='o')
+    #plt.plot(fit_bin_centers, fit_counts, linestyle='-', label="Fitted powerlaw")#, marker='o')
+    #plt.xlabel('(qαd²/k²t)^(1-1/n) (-)')
+    #plt.ylabel('PDF')
+    #plt.title('Probability Density Function')
+    #plt.legend()
+    #plt.grid(True)
+    #plt.show()
+    
+    x_fit = [min(x_axis), max(x_axis)]
+    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_fit]
 
     plt.figure(figsize=(16,9))
     plt.grid(True)
     #plt.plot(x_axis, libreoffice_fit, color="green", label="libreoffice")
-    plt.scatter(x_axis, y_axis, s=30, facecolors='r', edgecolors='r')
-    #plt.plot(x_axis, y_fit, color="black", label="fitted")
-    plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
-    plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
-    
-    plt.xlabel("q/k (-)")
+    plt.scatter(x_axis, y_axis, s=30, facecolors='k', edgecolors='k', label="data points")
+    #plt.plot(x_fit, y_fit, color="black", label="fitted line")
+    #plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
+    #plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(10, 0.1), color="black")
+    # α
     plt.xscale("log")
-    #plt.ylabel("(q²t/kαd²)^(1-1/n) (-)")
-    plt.ylabel("(kt/αd²)^(1-1/n) (-)")
-    
-    plt.yscale("log")
+    #plt.yscale("log")
+    plt.xlabel("Ks (m/hr)")
+    plt.ylabel("t (hr)")
+    plt.title("q=0.0002m/hr, d=4m")
+    plt.legend()
     plt.show()
+
+    #y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
+    #plt.scatter(y_axis, y_fit, s=30, facecolors='r', edgecolors='r', label="data points")
+    #plt.plot([0,100], [0, 100], 'k-')
+    #plt.xlim([0.01, 100])
+    #plt.ylim([0.01, 100])
+    #plt.xscale("log")
+    #plt.yscale("log")
+    #plt.xlabel("Simulations")
+    #plt.ylabel("Fitted powerlaw")
+    #plt.show()
 
 def plot_qk_ss_drainage():
     from scipy.optimize import curve_fit
@@ -2278,10 +2313,11 @@ def plot_qk_ss_drainage():
             #t = (alfa*Ks*t)/(theta_s-theta_r)
             #L = alfa*d
             
-            x = k
+            x = alfa*d
+            #x = (k*t/(d))
             #y = ((alfa*d*d)/((t)))**(1-1/n) #best performance
-            y = ((alfa*d*d)/((t)))**(1-1/n)
-            #y = t
+            #y = (k*t/(d))**(1-1/n)
+            y = (alfa*k*t)**(1-1/n) # best dimensionless
             #y_pred = (3.4743488481411937)*(x**(-0.43044273123818805))
             #t_pred = (y_pred*y_pred*alfa*d*d)/(Ks)
             #t_list.append(abs(t_pred-t))
@@ -2296,33 +2332,33 @@ def plot_qk_ss_drainage():
     print(f"Fitted a: {a_fit} and b:{b_fit}")
 
     # Generate data points for the fitted curve
-    x_fit = [10**-4, 10**-3, 10**-2, 10**-1, 1]
-    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_fit]
-    #R_square = r2_score(y_axis, y_fit)
-    #print(f"R2 = {R_square}")
-    #if R_square <0:
-    #    print("failed")
-    #    return
-    #MSE = np.square(np.subtract(y_axis,y_fit)).mean()
-    #print(f"MSE = {MSE*10**-9} x10⁹")
-    #RMSE = math.sqrt(MSE)
-    #print(f"RMSE = {RMSE}")
-    #MAE = mean_absolute_error(y_axis, y_fit)
-    #print(f"MAE = {MAE}")
+    x_fit = [min(x_axis), max(x_axis)]
+    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
+    R_square = r2_score(y_axis, y_fit)
+    print(f"R2 = {R_square}")
+    MSE = np.square(np.subtract(y_axis,y_fit)).mean()
+    print(f"MSE = {MSE*10**-9} x10⁹")
+    RMSE = math.sqrt(MSE)
+    print(f"RMSE = {RMSE}")
+    MAE = mean_absolute_error(y_axis, y_fit)
+    print(f"MAE = {MAE}")
     #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
+    
+    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_fit]
 
     plt.figure(figsize=(16,9))
     plt.grid(True)
-    plt.scatter(x_axis, y_axis, s=30, facecolors='r', edgecolors='r')
-    plt.plot(x_fit, y_fit, color="black", label="fitted")
+    plt.scatter(x_axis, y_axis, label="data points", s=30, facecolors='r', edgecolors='r')
+    plt.plot(x_fit, y_fit, color="black", label="fitted line")
     #plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
     #plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
-    plt.annotate(f"R²={round(0.9461954598365823, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 0.1), color="black")
+    plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(1, 7), color="black")
     
-    plt.xlabel("k (m/hr)")
     plt.xscale("log")
-    plt.ylabel("(αd²/t)^(1-1/n) (m/hr)")
     plt.yscale("log")
+    plt.xlabel("αd (-)")
+    plt.ylabel("(αkt)^(1-1/n) (-)")
+    plt.legend()
     plt.show()
 
 def plot_ss_profiles():
@@ -2410,43 +2446,6 @@ def plot_analytical_numerical():
     plt.ylabel("Soil depth (m)")
     plt.show()
 
-
-def SD_downscaling_example():
-    # Import necessary libraries
-    import numpy as np
-    import pandas as pd
-    from sklearn.linear_model import LinearRegression
-
-    # Generate some example data
-    # In a real-world scenario, you'd have historical climate data, not synthetic data.
-    # In this example, we're using random data for demonstration purposes.
-
-    # Larger-scale climate variable (e.g., precipitation) at a coarse resolution
-    coarse_resolution_data = np.random.rand(100)  # Replace with your actual data
-
-    # Local predictor variable (elevation)
-    elevation_data = np.random.randint(0, 3000, 100)  # Replace with your actual elevation data
-
-    # Create a DataFrame to hold the data
-    data = pd.DataFrame({'Precipitation': coarse_resolution_data, 'Elevation': elevation_data})
-
-    # Split the data into predictors (X) and target (y)
-    X = data[['Elevation']].values
-    y = data['Precipitation'].values
-
-    # Fit a statistical model (Linear Regression) to downscale precipitation
-    model = LinearRegression()
-    model.fit(X, y)
-    plt.scatter(X,y)
-    # Now, let's use the model to downscale precipitation for a new location with a given elevation.
-    new_elevation = np.array([[1500]])  # Replace with the elevation of the new location
-
-    # Predict the downscaled precipitation
-    downscaled_precipitation = model.predict(new_elevation)
-
-    # Print the result
-    print(f"Downscaled precipitation for elevation {new_elevation[0][0]}: {downscaled_precipitation[0]:.2f} units")
-    plt.show()
 
 def analytical_pressure():
     import math
@@ -2563,20 +2562,22 @@ def parflow_namelist():
     thetar_namelist = namelist[153]
     thetas_namelist = namelist[154]
 
-    for i in range(200):
+    for i in range(12):
         new_namelist = namelist
         case_path = os.path.join(dir_path, f"test_case{i}")
         os.mkdir(case_path)
 
-        VG_index = random.choice(VG_indexes)
+        #VG_index = random.choice(VG_indexes)
+        VG_index = i
         alfa = VG_params["Alpha"].iloc[VG_index]
         n = VG_params["n"].iloc[VG_index]
         theta_r = VG_params["Sr"].iloc[VG_index]
         theta_s = VG_params["Ss"].iloc[VG_index]
         k = VG_params["Ks"].iloc[VG_index]
 
-        q_k = random.uniform(0.01, 0.1)
-        q = q_k * k
+        #q_k = random.uniform(0.0001, 0.001)
+        q = 0.001
+        #q = q_k * k
         #k = random.uniform(k_range[0], k_range[1])
         #q = random.uniform(q_range[0], min(k, 1))
         
@@ -2592,7 +2593,8 @@ def parflow_namelist():
         #theta_s = round(random.uniform(thetas_range[0], thetas_range[1]),2)
         new_namelist[153] = thetar_namelist.replace("0.2", f"{theta_r}")
         new_namelist[154] = thetas_namelist.replace("1.0", f"{theta_s}")
-        d = round(random.uniform(d_range[0], d_range[1]),1)
+        #d = round(random.uniform(d_range[0], d_range[1]),1)
+        d = 4.0
         new_namelist[54] = d_namelist.replace("4.0", f"{d}")
         new_namelist[31] = Nz_namelist.replace("40", f"{int(d*10)}")
 
@@ -2613,7 +2615,7 @@ def simulation_bash():
     sbatch = f.readlines()
     f.close()
     sbatch = sbatch[:13]
-    for i in range(200):
+    for i in range(12):
         #case_path = os.path.join(dir_path, f"test_case{i}")
         case_path = f"cd /p/scratch/cslts/miaari1/testcases/test_case{i}"
         run_command = "tclsh infiltration.tcl"
@@ -2628,7 +2630,7 @@ def simulation_bash():
 def steadystate_kinsol():
     dir_path = "/p/scratch/cslts/miaari1/testcases"
     data = {"q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "time": []}
-    for case_index in range(200):
+    for case_index in range(12):
         reached = False
         case_dir = os.path.join(dir_path, f"test_case{case_index}")
         f = open(os.path.join(case_dir, "settings.txt"), "r")
@@ -2662,7 +2664,101 @@ def steadystate_kinsol():
     print(len(data["time"]))
     df = pd.DataFrame(data)
     print(df)
-    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "testcases.csv"), index=False)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "testcases_constantq_constantd_v3.csv"), index=False)
 
 
-simulation_bash()
+def append_csv():
+    df_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
+    df1_path = "/p/project/cslts/miaari1/python_scripts/testcases_4.csv"
+    df = pd.read_csv(df_path)
+    df1 = pd.read_csv(df1_path)
+
+    df = pd.concat([df, df1], ignore_index=True)
+    df.reset_index(drop=True, inplace=True)
+
+    df.to_csv('/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv', index=False)
+
+
+def plot_pdf(data):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    #data = np.random.normal(0, 1, 1000)  # Example data
+
+    counts, bin_edges = np.histogram(data, bins=30, density=True)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    return bin_centers, counts
+    plt.plot(bin_centers, counts, linestyle='-', marker='o')
+    plt.xlabel('X-Axis Label')
+    plt.ylabel('PDF')
+    plt.title('Probability Density Function')
+    plt.grid(True)
+    plt.show()
+
+def optimize_power(initial_data):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.optimize import curve_fit
+
+    # Generate initial data (you should replace this with your actual data)
+    #initial_data = np.random.exponential(scale=2, size=1000)
+
+    # Define the power-law function
+    def power_law(x, c):
+        return x**c
+
+    # Define an initial guess for the parameters
+    initial_guess = [-2]
+
+    # Fit the data to the power-law function
+    params, covariance = curve_fit(power_law, initial_data, np.arange(len(initial_data)), p0=initial_guess)
+
+    # Extract the optimized parameters
+    optimized_c = params
+    print(optimized_c)
+    # Apply the optimized constant power    
+    transformed_data = initial_data ** optimized_c
+
+    # Plot initial and transformed data
+    plt.hist(initial_data, bins=30, alpha=0.5, label='Initial Data')
+    plt.hist(transformed_data, bins=30, alpha=0.5, label=f'Transformed Data (Power={optimized_c:.2f})')
+
+    plt.legend()
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title('Initial and Transformed Data')
+    plt.show()
+
+def plot_ss_profiles():
+    plt.rcParams.update({'font.size': 22})
+    folderpath='/p/project/cslts/miaari1/python_scripts/parflow'
+    z = [4-z/100 for z in range(5,400, 10)]
+
+    data_loam = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "loamsoil", "infiltration.out.press.00419.pfb"))
+    data_clay = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "claysoil", "infiltration.out.press.00237.pfb"))
+    data_loam_qk = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "loamsoil_qk", "infiltration.out.press.02813.pfb"))
+    data_clay_qk = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "claysoil_qk", "infiltration.out.press.02851.pfb"))
+    data_sandy_qk = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "sandysoil_qk", "infiltration.out.press.00121.pfb"))
+    data_sandy = SLOTH.sloth.IO.read_pfb(os.path.join(folderpath, "sandysoil", "infiltration.out.press.00558.pfb"))
+    plt.plot(data_loam[:,0,0],z, label="Loam soil")
+    plt.plot(data_clay[:,0,0],z, label="Clay soil")
+    plt.plot(data_loam_qk[:,0,0],z, label="Loam soil qk")
+    plt.plot(data_clay_qk[:,0,0],z, label="Clay soil qk")
+    plt.plot(data_sandy_qk[:,0,0],z, label="Sandy soil qk")
+    plt.plot(data_sandy[:,0,0],z, label="Sandy soil")
+    
+    plt.gca().invert_yaxis()
+    plt.xlim([-4, 0.0])
+    plt.xlabel("Pressure (m)")
+    plt.ylabel("Soil depth (m)")
+    plt.legend()
+    plt.show()
+
+#plot_ss_profiles()
+plot_qk_ss()
+#plot_qk_ss_drainage()
+#parflow_namelist()
+#simulation_bash()
+#steadystate_kinsol()
+#append_csv()

@@ -31,27 +31,33 @@ import SLOTH.sloth.IO
 def save_steady_state(values, title):
     steady_state = pd.read_csv('/p/project/cslts/miaari1/python_scripts/steady_state.csv')
     steady_state[f'{title}'] = data[:,0,0]
-    steady_state.to_csv('/p/project/cslts/miaari1/python_scripts/steady_state.csv', index=False)
+    steady_state.to_csv('/p/project/cslts/miaari1/python_scripts/numerical_pressure_example.csv', index=False)
     return
 
-name='/p/project/cslts/miaari1/python_scripts/parflow/comparewithanalytical/srivastavaandyeh_0-1_2ndinf/exfiltration'
-z = list(range(1,11))
+name='/p/project/cslts/miaari1/python_scripts/parflow/claysoil/infiltration'
 nt=2000
+pressures = {}
+pressures["z"] = [z/100 for z in range(5,400, 10)]
+timesteps = [0, 1, 3, 5, 10, 15]#, 20, 30, 50, 75, 100]
 
-for t in range (nt+1):
+index = 9
+for t in range(nt+1):
     #t = 193
     print(name + '.out.satur.'+('{:05d}'.format(t))+'.pfb')
     #data = pfr.read(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
     data = SLOTH.sloth.IO.read_pfb(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
 
-    plt.plot(data[:,0,0],z)
-    
+    plt.plot(data[:,0,0],pressures["z"], color="black")
+    if index<0:
+        index = 0
+    plt.annotate(f"t={t}", xy=(data[:,0,0][index], pressures["z"][index]), color="black")
+    index -= 1
 
-# NOTE comment it when testing
-#save_steady_state(data[:,0,0], '001_10_193')
-print(data[:,0,0])
+    pressures[f"time={t}"] = data[:,0,0]
+
+print(data[:,5,5].shape)
+print(len(pressures["z"]))
+df = pd.DataFrame(pressures)
+df.to_csv('/p/project/cslts/miaari1/python_scripts/outputs/clay_soil.csv', index=False)
 
 plt.show()
-print(data.shape)
-print(data[0,0,0])
-print(data[-1,0,0])
