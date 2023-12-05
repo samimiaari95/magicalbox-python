@@ -291,9 +291,9 @@ def analytical_pressure():
     c = 10
     Ss = 1
     Sr = 0.2
-    qa_star = 0.0 #m/hr
-    qb_star = 0.001 #m/hr
-    pressure_0 = 0 #m
+    qa_star = 0.001 #m/hr
+    qb_star = 0.009 #m/hr
+    pressure_0 = -1/c #m
 
     # define dimensionless parameters
     L = c*L_star
@@ -311,7 +311,7 @@ def analytical_pressure():
     print(z_values)
     # calculate for timesteps
     #timesteps = range(1, 2002, 1)
-    timesteps = [10, 100, 1091]
+    timesteps = [1, 3, 10]
     for t_star in timesteps:
         data[f"time={t_star}"] = []
         t = (c*Ks*t_star)/(Ss-Sr)
@@ -330,7 +330,7 @@ def analytical_pressure():
     
     df = pd.DataFrame(data)
     #print(df)
-    df.to_csv("/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure.csv", index=False)
+    df.to_csv("/p/project/cslts/miaari1/python_scripts/outputs/analytical_pressure_example.csv", index=False)
     return
 
 def plot_analytical_numerical():
@@ -349,7 +349,7 @@ def plot_analytical_numerical():
     # read from numerical solution
     #alfa = 3.698059609737854
     #n = 1.8990947179855633
-    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example_VGM.csv"
+    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/poster/SandY_kfit.csv"
     numerical_solution = pd.read_csv(numerical_path)
     y_axis = numerical_solution["z"].to_list()
     y_axis = [1-x for x in y_axis]
@@ -386,26 +386,6 @@ def plot_analytical_numerical():
         else:
             plt.annotate(f"{t}", xy=(x_axis[-1], y_axis[-1]), color="k")    
 
-    # read from numerical solution
-    #A = 0.008490091277910679
-    #gamma = 1.7664303986924215
-    numerical_path = "/p/project/cslts/miaari1/python_scripts/outputs/numerical_pressure_example_H.csv"
-    numerical_solution = pd.read_csv(numerical_path)
-    y_axis = numerical_solution["z"].to_list()
-    y_axis = [1-x for x in y_axis]
-    timesteps = [0, 1, 3, 10]#, 15, 20, 30, 50, 75]
-
-    index = 0
-    for t in timesteps:
-        index -= 1
-        x_axis = numerical_solution[f"time={t}"].to_list()
-        #x_axis = [x*-1 for x in x_axis]
-        #x_axis = [haverkamp_k(abs(h), A, gamma) for h in x_axis]
-        plt.plot(x_axis, y_axis, f"r{line_type[f'{t}']}")
-        if t==10:
-            plt.annotate(f"{t}", xy=(x_axis[-4], y_axis[-4]), color="r")
-        elif t!=0 and t!=10:
-            plt.annotate(f"{t}", xy=(x_axis[-1], y_axis[-1]), color="r")
     
     plt.gca().invert_yaxis()
     plt.xlim([-0.3, 0])
@@ -413,9 +393,8 @@ def plot_analytical_numerical():
     plt.xlabel("Pressure (m)")
     plt.ylabel("Soil depth (m)")
     line_up, = plt.plot([], 'k', label='Analytical (Gardner)')
-    line_mid, = plt.plot([], 'r', label='Numerical (Haverkamp)')
     line_down, = plt.plot([], 'b', label='Numerical (Van Genuchten-Mualem)')
-    plt.legend(handles=[line_up, line_down, line_mid])
+    plt.legend(handles=[line_up, line_down])
     plt.show()
     #plt.savefig("/p/project/cslts/miaari1/python_scripts/analyticalvsnumerical.png")
 
@@ -518,8 +497,8 @@ def pressure_vs_Kr():
 
 
 #plot_t0_analytical()
-#analytical_pressure()
-#plot_analytical_numerical()
+analytical_pressure()
+plot_analytical_numerical()
 #c = 2.46491113
 #plot_sum_residue(c)
-fit_SWCC()
+#fit_SWCC()

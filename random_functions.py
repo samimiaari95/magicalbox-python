@@ -2137,11 +2137,11 @@ def plot_qk_ss():
         #y = (a)*np.exp(-b*h)
         return y
     plt.rcParams.update({'font.size': 22})
-    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv' # with watertable depth, n, alfa, theta, Ks from rosetta
+    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv' # with watertable depth, n, alfa, theta, Ks from rosetta
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/qk_ss.csv' # without watertable depth
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_constantq.csv' # without watertable depth
-    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_constantq_constantd.csv' # without watertable depth
+    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_constantq_constantd.csv' # without watertable depth
 
     q_column = "q"
     k_column = "k"
@@ -2153,19 +2153,7 @@ def plot_qk_ss():
     t_column = "time"
     df = pd.read_csv(filepath)
     print(df)
-    #indexes = list(range(1165, 1215))
-    #df = df[~1165:~1215]
-    #df = df.drop(indexes, axis=0)
-    #df.reset_index(inplace=True, drop=True)
-    #print(df)
-
-    #d = 4 #4m watertable depth
-    #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
-
-    #alfa = 1
-    #n = 2
-    #theta_s = 1
-    #theta_r = 0.2
+    
     t_list = []
     x_axis = []
     y_axis = []
@@ -2178,26 +2166,12 @@ def plot_qk_ss():
         theta_r = df[theta_r_column].iloc[i]
         theta_s = df[theta_s_column].iloc[i]
         t = df[t_column].iloc[i]
-        if k>=q and t!=0:# and (q/k)>=0.001:
-            #q = q/Ks
-            #k = k/Ks
-            #d = alfa*d
+        if k>=q and t!=0 and (q/k)>=0.001:
             #t = (alfa*k*t)/(theta_s-theta_r)
-            #L = alfa*d
             
-            x = k
-            #x = (alfa*d*q/k)
-            #y = (k*k*t/(q*d*d*alfa))**(1-1/n) # best performance
-            #y = (k*t/(d*d*alfa))**(1-1/n)
-            #y = (q*q*t/(k*alfa*d*d))**(1-1/n)
-            #y = (q*d*d*alfa/(k*k*t))**(1-1/n) # best fit
-            y = t#*k/d
-            #y = (k*t/d)#**(1-1/n)
-            #y = alfa*d*t*k*alfa/(theta_s-theta_r)#*q/d)
-
-            #y_pred = 1.9886875606876062*(x**(-0.5468849399415959))
-            #t_pred = (y_pred*y_pred*q*alfa*d*d)/(k*k)
-            #t_list.append(abs(t_pred-t))
+            x = q/k
+            y = t*q/d
+            
             y_axis.append(y)
             x_axis.append(x)
 
@@ -2221,12 +2195,6 @@ def plot_qk_ss():
     MAE = mean_absolute_error(y_axis, y_fit)
     print(f"MAE = {MAE}")
 
-    # calculate difference in t
-    #print(t_list)
-    #print(f"avg t = {np.mean(t_list)}")
-    #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
-    #plt.scatter(x_axis, t_list, s=30, facecolors='r', edgecolors='r')
-    
     #org_bin_centers, org_counts = plot_pdf(y_axis)
     #fit_bin_centers, fit_counts = plot_pdf(y_fit)
     #plt.plot(org_bin_centers, org_counts, linestyle='-', label="Simulations")#, marker='o')
@@ -2243,18 +2211,16 @@ def plot_qk_ss():
 
     plt.figure(figsize=(16,9))
     plt.grid(True)
-    #plt.plot(x_axis, libreoffice_fit, color="green", label="libreoffice")
     plt.scatter(x_axis, y_axis, s=30, facecolors='k', edgecolors='k', label="data points")
-    #plt.plot(x_fit, y_fit, color="black", label="fitted line")
-    #plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
+    plt.plot(x_fit, y_fit, color="black", label="fitted line")
     #plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(10, 0.1), color="black")
     # α
     plt.xscale("log")
-    #plt.yscale("log")
+    plt.yscale("log")
     plt.xlabel("Ks (m/hr)")
     plt.ylabel("t (hr)")
-    plt.title("q=0.0002m/hr, d=4m")
-    plt.legend()
+    #plt.title("q=0.0002m/hr, d=4m")
+    #plt.legend()
     plt.show()
 
     #y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
@@ -2279,24 +2245,29 @@ def plot_qk_ss_drainage():
         #y = (a)*np.exp(-b*h)
         return y
     plt.rcParams.update({'font.size': 22})
-    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
+    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_exfiltration1.csv' # with watertable depth, k, q
+    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
     #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/qk_ss.csv' # without watertable depth
     
     q_column = "q"
     k_column = "k"
     d_column = "d"
-    t_column = "exf_time"
+    n_column = "n"
+    alfa_column = "alfa"
+    theta_r_column = "theta_r"
+    theta_s_column = "theta_s"
+    t_column = "time"
     df = pd.read_csv(filepath)
 
     df = df.dropna()
     #print(df)
     
-    alfa = 1
+    #alfa = 1
     #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
-    n = 2
+    #n = 2
     #Ks = 1 #m/hr
-    theta_s = 1
-    theta_r = 0.2
+    #theta_s = 1
+    #theta_r = 0.2
 
     t_list = []
     x_axis = []
@@ -2305,19 +2276,25 @@ def plot_qk_ss_drainage():
         q = df[q_column].iloc[i]
         k = df[k_column].iloc[i]
         d = df[d_column].iloc[i]
+        n = df[n_column].iloc[i]
+        alfa = df[alfa_column].iloc[i]
+        theta_r = df[theta_r_column].iloc[i]
+        theta_s = df[theta_s_column].iloc[i]
         t = df[t_column].iloc[i]
         if k>=q and t!=0:
             #q = q/Ks
             #k = k/Ks
             #d = alfa*d
-            #t = (alfa*Ks*t)/(theta_s-theta_r)
+            t = (alfa*k*t)/(theta_s-theta_r)
             #L = alfa*d
             
             x = alfa*d
+            #x = alfa*d
             #x = (k*t/(d))
             #y = ((alfa*d*d)/((t)))**(1-1/n) #best performance
             #y = (k*t/(d))**(1-1/n)
-            y = (alfa*k*t)**(1-1/n) # best dimensionless
+            y = t
+            #y = (alfa*k*t)**(1-1/n) # best dimensionless
             #y_pred = (3.4743488481411937)*(x**(-0.43044273123818805))
             #t_pred = (y_pred*y_pred*alfa*d*d)/(Ks)
             #t_list.append(abs(t_pred-t))
@@ -2615,12 +2592,14 @@ def simulation_bash():
     sbatch = f.readlines()
     f.close()
     sbatch = sbatch[:13]
-    for i in range(12):
+    for i in range(len(os.listdir(dir_path))):
         #case_path = os.path.join(dir_path, f"test_case{i}")
         case_path = f"cd /p/scratch/cslts/miaari1/testcases/test_case{i}"
         run_command = "tclsh infiltration.tcl"
+        run_command_2 = "tclsh exfiltration.tcl"
         sbatch.append(case_path)
         sbatch.append(run_command)
+        sbatch.append(run_command_2)
     
     with open("/p/project/cslts/miaari1/submit_simulation_advanced.sh", 'w') as sbatchfile:
         sbatchfile.write('\n'.join(sbatch))
@@ -2628,9 +2607,11 @@ def simulation_bash():
 
 
 def steadystate_kinsol():
+    # exfiltration
     dir_path = "/p/scratch/cslts/miaari1/testcases"
     data = {"q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "time": []}
-    for case_index in range(12):
+    for case_index in range(len(os.listdir(dir_path))):
+        print(case_index)
         reached = False
         case_dir = os.path.join(dir_path, f"test_case{case_index}")
         f = open(os.path.join(case_dir, "settings.txt"), "r")
@@ -2639,7 +2620,10 @@ def steadystate_kinsol():
 
         
 
-        kinsolfile = os.path.join(case_dir, "infiltration.out.kinsol.log")
+        kinsolfile = os.path.join(case_dir, "exfiltration.out.kinsol.log")
+        if not os.path.exists(kinsolfile):
+            print("doesn't exit")
+            continue
         filedata = open(kinsolfile)
         lines = filedata.readlines()
         time_kinsol = [x for x in lines if "KINSOL starting step for time" in x or "KINSolInit nni=    0  fnorm=" in x]
@@ -2664,8 +2648,134 @@ def steadystate_kinsol():
     print(len(data["time"]))
     df = pd.DataFrame(data)
     print(df)
-    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "testcases_constantq_constantd_v3.csv"), index=False)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "testcases_exfiltration1.csv"), index=False)
 
+
+def parflow_namelist_infiltration():
+    import random
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    filepath = "/p/project/cslts/miaari1/python_scripts/infiltration.tcl"
+    parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
+    f = open(filepath, "r")
+    namelist = f.readlines()
+    f.close()
+
+    parameters_df = pd.read_csv(parameters_path)
+    
+    k_namelist = namelist[64]
+    q_namelist = namelist[214]
+    d_namelist = namelist[54]
+    Nz_namelist = namelist[31]
+    alfa_namelist1 = namelist[142]
+    alfa_namelist2 = namelist[151]
+    n_namelist1 = namelist[143]
+    n_namelist2 = namelist[152]
+    thetar_namelist = namelist[153]
+    thetas_namelist = namelist[154]
+    stoptime_namelist = namelist[117]
+    dumpinterval_namelist = namelist[118]
+
+    for i in range(len(parameters_df)):
+        new_namelist = namelist
+        case_path = os.path.join(dir_path, f"test_case{i}")
+        os.mkdir(case_path)
+
+        # define variables
+        q = parameters_df["q"].iloc[i]
+        k = parameters_df["k"].iloc[i]
+        d = parameters_df["d"].iloc[i]
+        alfa = parameters_df["alfa"].iloc[i]
+        n = parameters_df["n"].iloc[i]
+        theta_r = parameters_df["theta_r"].iloc[i]
+        theta_s = parameters_df["theta_s"].iloc[i]
+        inf_time = parameters_df["time"].iloc[i]
+
+        # change namelist
+        new_namelist[64] = k_namelist.replace("0.01",f"{k}")
+        new_namelist[214] = q_namelist.replace("0.001", f"{q}")
+        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
+        new_namelist[31] = Nz_namelist.replace("40", f"{int(d*10)}")
+        new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
+        new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
+        new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
+        new_namelist[152] = n_namelist2.replace("2.0", f"{n}")
+        new_namelist[153] = thetar_namelist.replace("0.2", f"{theta_r}")
+        new_namelist[154] = thetas_namelist.replace("1.0", f"{theta_s}")
+        new_namelist[117] = stoptime_namelist.replace("5000.0", f"{inf_time}")
+        new_namelist[118] = dumpinterval_namelist.replace("1000.0", f"{inf_time}")
+
+        # save tcl
+        settings = ["k,q,alfa,n,theta_r,theta_s,d",f"{k}",f"{q}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
+        with open(os.path.join(dir_path, f"test_case{i}", "settings.txt"),'w') as settingsfile:
+            settingsfile.write('\n'.join(settings))
+        settingsfile.close()
+
+        with open(os.path.join(dir_path, f"test_case{i}", "infiltration.tcl"), 'w') as tclfile:
+            tclfile.write('\n'.join(new_namelist))
+        tclfile.close()
+    return
+
+
+def parflow_namelist_drainage():
+    import random
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    filepath = "/p/project/cslts/miaari1/python_scripts/exfiltration.tcl"
+    parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
+    f = open(filepath, "r")
+    namelist = f.readlines()
+    f.close()
+
+    parameters_df = pd.read_csv(parameters_path)
+    
+    k_namelist = namelist[64]
+    d_namelist = namelist[54]
+    Nz_namelist = namelist[31]
+    alfa_namelist1 = namelist[142]
+    alfa_namelist2 = namelist[151]
+    n_namelist1 = namelist[143]
+    n_namelist2 = namelist[152]
+    thetar_namelist = namelist[153]
+    thetas_namelist = namelist[154]
+    
+    for i in range(len(parameters_df)):
+        new_namelist = namelist
+        case_path = os.path.join(dir_path, f"test_case{i}")
+        #os.mkdir(case_path)
+
+        # define variables
+        q = parameters_df["q"].iloc[i]
+        k = parameters_df["k"].iloc[i]
+        d = parameters_df["d"].iloc[i]
+        alfa = parameters_df["alfa"].iloc[i]
+        n = parameters_df["n"].iloc[i]
+        theta_r = parameters_df["theta_r"].iloc[i]
+        theta_s = parameters_df["theta_s"].iloc[i]
+        inf_time = parameters_df["time"].iloc[i]
+
+        # change namelist
+        new_namelist[64] = k_namelist.replace("0.01",f"{k}")
+        #new_namelist[214] = q_namelist.replace("0.001", f"{q}")
+        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
+        new_namelist[31] = Nz_namelist.replace("40", f"{int(d*10)}")
+        new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
+        new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
+        new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
+        new_namelist[152] = n_namelist2.replace("2.0", f"{n}")
+        new_namelist[153] = thetar_namelist.replace("0.2", f"{theta_r}")
+        new_namelist[154] = thetas_namelist.replace("1.0", f"{theta_s}")
+        #new_namelist[117] = stoptime_namelist.replace("50000.0", f"{inf_time}")
+        #new_namelist[118] = dumpinterval_namelist.replace("10000.0", f"{inf_time}")
+
+        # save tcl
+        settings = ["k,alfa,n,theta_r,theta_s,d",f"{k}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
+        with open(os.path.join(dir_path, f"test_case{i}", "settings_ex.txt"),'w') as settingsfile:
+            settingsfile.write('\n'.join(settings))
+        settingsfile.close()
+
+        with open(os.path.join(dir_path, f"test_case{i}", "exfiltration.tcl"), 'w') as tclfile:
+            tclfile.write('\n'.join(new_namelist))
+        tclfile.close()
+    return
 
 def append_csv():
     df_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
@@ -2756,8 +2866,8 @@ def plot_ss_profiles():
     plt.show()
 
 #plot_ss_profiles()
-plot_qk_ss()
-#plot_qk_ss_drainage()
+#plot_qk_ss()
+plot_qk_ss_drainage()
 #parflow_namelist()
 #simulation_bash()
 #steadystate_kinsol()

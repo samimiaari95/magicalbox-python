@@ -28,20 +28,15 @@ import matplotlib.pyplot as plt
 #import pf_read as pfr
 import SLOTH.sloth.IO
 
-def save_steady_state(values, title):
-    steady_state = pd.read_csv('/p/project/cslts/miaari1/python_scripts/steady_state.csv')
-    steady_state[f'{title}'] = data[:,0,0]
-    steady_state.to_csv('/p/project/cslts/miaari1/python_scripts/numerical_pressure_example.csv', index=False)
-    return
 
-name='/p/project/cslts/miaari1/python_scripts/parflow/claysoil/infiltration'
+name='/p/project/cslts/miaari1/python_scripts/parflow/comparewithanalytical/exfiltration/exfiltration'
 nt=2000
 pressures = {}
 pressures["z"] = [z/100 for z in range(5,400, 10)]
-timesteps = [0, 1, 3, 5, 10, 15]#, 20, 30, 50, 75, 100]
+timesteps = [1]#, 20, 30, 50, 75, 100]
 
 index = 9
-for t in range(nt+1):
+for t in timesteps:
     #t = 193
     print(name + '.out.satur.'+('{:05d}'.format(t))+'.pfb')
     #data = pfr.read(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
@@ -58,6 +53,6 @@ for t in range(nt+1):
 print(data[:,5,5].shape)
 print(len(pressures["z"]))
 df = pd.DataFrame(pressures)
-df.to_csv('/p/project/cslts/miaari1/python_scripts/outputs/clay_soil.csv', index=False)
+#df.to_csv('/p/project/cslts/miaari1/python_scripts/outputs/clay_soil.csv', index=False)
 
 plt.show()
