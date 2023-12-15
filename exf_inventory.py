@@ -34,56 +34,22 @@ def KS_fit(data, fitted):
     return
 
 
-def plot1(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = q
-    y = t/d
-    xlabel = "q (m/hr)"
-    ylabel = "t/d (hr/m)"
+def plot1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+    x = alfa*d*n
+    y = exf_t*k*alfa
+    xlabel = "α*d (-)"
+    ylabel = "t*k*α (-)"
     return x, y, xlabel, ylabel
 
-def plot2(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = q/k
-    y = t*k/d
-    xlabel = "q/k (-)"
-    ylabel = "t*k/d (-)"
+def plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+    x = inf_t
+    y = exf_t
+    xlabel = "alfa*d (-)"
+    ylabel = "t*k*alfa (-)"
     return x, y, xlabel, ylabel
 
-def plot3(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = q/k
-    y = t*q/d
-    xlabel = "q/k (-)"
-    ylabel = "t*q/d (-)"
-    return x, y, xlabel, ylabel
 
-def plot4(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = q/(k*d*alfa)
-    y = t*k*alfa/((theta_s-theta_r))
-    xlabel = "q/(k*d*alpha) (-)"
-    ylabel = "t*k*alpha/(theta_s - theta_r) (-)"
-    return x, y, xlabel, ylabel
-
-def plot5(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = (q/(k))
-    y = (t*k/(n*d))**(1-1/n)
-    xlabel = "q/k (-)"
-    ylabel = "(t*k/(n*d))^(1-1/n) (-)"
-    return x, y, xlabel, ylabel
-
-def plot6(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = alfa*d
-    y = t*q*alfa
-    xlabel = "d*alpha (-)"
-    ylabel = "t*q*alpha (-)"
-    return x, y, xlabel, ylabel
-
-def plot7(q, k, d, n, alfa, theta_r, theta_s, t):
-    x = alfa*d
-    y = t*k*alfa
-    xlabel = "d*alpha (-)"
-    ylabel = "t*k*alpha (-)"
-    return x, y, xlabel, ylabel
-
-inf_cases_path = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv'
+exf_cases_path = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_drainage.csv'
 
 q_column = "q"
 k_column = "k"
@@ -92,15 +58,16 @@ n_column = "n"
 alfa_column = "alfa"
 theta_r_column = "theta_r"
 theta_s_column = "theta_s"
-t_column = "time"
-df = pd.read_csv(inf_cases_path)
-
+inf_t_column = "inf_time"
+exf_t_column = "exf_time"
+df = pd.read_csv(exf_cases_path)
+    
 soil_types = list(df[k_column].unique())
 soil_types.sort()
 
 ax = plt
 ax.figure(figsize=(16,9))
-lenght = 0
+
 x_all = []
 y_all = []
 colors = []
@@ -117,9 +84,10 @@ for soil in soil_types:
         alfa = df_soil[alfa_column].iloc[i]
         theta_r = df_soil[theta_r_column].iloc[i]
         theta_s = df_soil[theta_s_column].iloc[i]
-        t = df_soil[t_column].iloc[i]
-        if k>=q and t!=0 and (q/k)>=0.001:
-            x, y, xlabel, ylabel = plot7(q, k, d, n, alfa, theta_r, theta_s, t)
+        inf_t = df_soil[inf_t_column].iloc[i]
+        exf_t = df_soil[exf_t_column].iloc[i]
+        if k>=q and exf_t!=0 and (q/k)>=0.001:
+            x, y, xlabel, ylabel = plot1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t)
             y_axis.append(y)
             x_axis.append(x)
             index += 1
@@ -132,7 +100,7 @@ for soil in soil_types:
 y_lin = np.log(y_all)
 x_lin = np.log(x_all)
 # Fit the function
-params, covariance = curve_fit(linear_law, x_lin, y_lin)#, method="trf")
+params, covariance = curve_fit(linear_law, x_lin, y_lin)
 a_fit, b_fit = params
 #a_fit = np.log(0.2475)
 #b_fit = -0.963
@@ -187,6 +155,3 @@ ax.xlabel(f"{xlabel}") # α
 ax.ylabel(f"{ylabel}")
 ax.colorbar().ax.set_ylabel('Ks (m/hr)')
 ax.show()
-
-    
-    
