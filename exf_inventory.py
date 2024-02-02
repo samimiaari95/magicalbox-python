@@ -15,15 +15,13 @@ import matplotlib.pyplot as plt
 from utils import powerlaw_func, linear_law
 
 plt.rcParams.update({'font.size': 22})
-######################### INFILTRATION INVENTORY ###########################
+
 def anderson_darling(data):
     result = anderson(data, dist='power law')
     print(f"Anderson-Darling Test Statistic: {result.statistic}")
     print(f"Critical Values: {result.critical_values}")
     print(f"Significance Levels: {result.significance_level}")
     print(f"Is the data drawn from the specified distribution? {result.statistic < result.critical_values[2]}")
-
-
 
 def KS_fit(data, fitted):
     # Perform Kolmogorov-Smirnov test for goodness of fit
@@ -33,23 +31,36 @@ def KS_fit(data, fitted):
     print(f"ks_p_value = {ks_p_value}")
     return
 
-
+######################### INFILTRATION INVENTORY ###########################
 def plot1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
     x = alfa*d*n
     y = exf_t*k*alfa
-    xlabel = "α*d (-)"
-    ylabel = "t*k*α (-)"
+    xlabel = "α*d*n (-)"
+    ylabel = "exf_t*k*α (-)"
     return x, y, xlabel, ylabel
 
 def plot2(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
-    x = inf_t
-    y = exf_t
-    xlabel = "alfa*d (-)"
-    ylabel = "t*k*alfa (-)"
+    x = alfa*d
+    y = (exf_t*k*alfa)
+    xlabel = "α*d (-)"
+    ylabel = "exf_t*k*α (-)"
     return x, y, xlabel, ylabel
 
+def plot3(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+    x = k
+    y = (exf_t/d)**(1-1/n)
+    xlabel = "k (-)"
+    ylabel = "(exf_t/d)^(1-1/n) (-)"
+    return x, y, xlabel, ylabel
 
-exf_cases_path = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_drainage.csv'
+def plot4(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t):
+    x = q/(k*alfa*d)
+    y = (exf_t)*k*alfa#/(theta_s-theta_r)
+    xlabel = "(q)/(k*alfa*d) (-)"
+    ylabel = "exf_t (-)"
+    return x, y, xlabel, ylabel
+
+exf_cases_path = '/p/project/cslts/miaari1/python_scripts/outputs/drainage_inf_testcases.csv'
 
 q_column = "q"
 k_column = "k"
@@ -61,13 +72,13 @@ theta_s_column = "theta_s"
 inf_t_column = "inf_time"
 exf_t_column = "exf_time"
 df = pd.read_csv(exf_cases_path)
-    
+
 soil_types = list(df[k_column].unique())
 soil_types.sort()
 
 ax = plt
 ax.figure(figsize=(16,9))
-
+length = 0
 x_all = []
 y_all = []
 colors = []
@@ -87,7 +98,8 @@ for soil in soil_types:
         inf_t = df_soil[inf_t_column].iloc[i]
         exf_t = df_soil[exf_t_column].iloc[i]
         if k>=q and exf_t!=0 and (q/k)>=0.001:
-            x, y, xlabel, ylabel = plot1(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t)
+            x, y, xlabel, ylabel = plot4(q, k, d, n, alfa, theta_r, theta_s, inf_t, exf_t)
+            length += 1
             y_axis.append(y)
             x_axis.append(x)
             index += 1
@@ -102,8 +114,6 @@ x_lin = np.log(x_all)
 # Fit the function
 params, covariance = curve_fit(linear_law, x_lin, y_lin)
 a_fit, b_fit = params
-#a_fit = np.log(0.2475)
-#b_fit = -0.963
 
 # fitting accuracy
 y_fit = [linear_law(x, a_fit, b_fit) for x in x_lin]
@@ -112,46 +122,25 @@ print(f"R2 = {R_square}")
 r = np.corrcoef(y_lin, y_fit)
 r2 = r[0][1]**2
 print(f"pearson r2: {r2}")
-#plt.plot(x_lin, y_fit, color="k", label="fitted line", linewidth=5)
-#plt.scatter(x_lin, y_lin, color="r", label="line")
-#plt.show()
-#exit()
+
 # back transform to power law
 a_fit = np.exp(a_fit)
 print(f"Fitted a: {a_fit} and b:{b_fit}")
-
-
-#a_fit = 0.0814093265449305
-#b_fit = -0.970811357451946
-
+print(length)
 # check kolmogorov-smirnov
 #anderson_darling(y_all)
 #KS_fit(y_all, y_fit)
 
-# calculate fitting accuracy ####### NOT CONSIDERED, SHOULD BE CALCULATED ON LINEARIZED DATA
-#R_square=1-(np.sum((np.array(y_all)-np.array(y_fit))**2)/np.sum((np.array(y_all)-np.array(np.mean(y_all)))**2))
-#R_square = r2_score(y_all, np.exp(y_fit))
-#print(f"R2 = {R_square}")
-#r = np.corrcoef(y_all, np.exp(y_fit))
-#r2 = r**2
-#print(f"pearson r2: {r2}")
-#MSE = np.square(np.subtract(y_all,y_fit)).mean()
-#print(f"MSE = {MSE*10**-9} x10⁹")
-#RMSE = math.sqrt(MSE)
-#print(f"RMSE = {RMSE}")
-#MAE = mean_absolute_error(y_all, y_fit)
-#print(f"MAE = {MAE}")
-
 x_fit = [min(x_all), max(x_all)]
 y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_fit]
 plt.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
-plt.annotate(f"r²={round(r2,2)}\nf(x)={round(a_fit, 2)}x^({round(b_fit, 2)})", xy=(min(x_all), max(y_all)/10), color="black")
+plt.annotate(f"R²={round(r2,2)}\nf(x)={round(a_fit, 2)}x^({round(b_fit, 2)})", xy=(min(x_all), max(y_all)/10), color="black")
 
 ax.scatter(x_all, y_all,c=colors, cmap='jet', s=30, norm=matplotlib.colors.LogNorm())
 ax.grid(True)
 ax.xscale("log")
 ax.yscale("log")
-ax.xlabel(f"{xlabel}") # α
+ax.xlabel(f"{xlabel}")
 ax.ylabel(f"{ylabel}")
 ax.colorbar().ax.set_ylabel('Ks (m/hr)')
 ax.show()

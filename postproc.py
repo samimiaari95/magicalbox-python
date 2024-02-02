@@ -29,15 +29,17 @@ import matplotlib.pyplot as plt
 import SLOTH.sloth.IO
 
 
-name='/p/project/cslts/miaari1/python_scripts/parflow/comparewithanalytical/exfiltration/exfiltration'
+name='/p/scratch/cslts/miaari1/testcases/test_case396/infiltration'
+#name='/p/project/cslts/miaari1/python_scripts/parflow/test/infiltration'
 nt=2000
 pressures = {}
-pressures["z"] = [z/100 for z in range(5,400, 10)]
+#pressures["z"] = [z/100 for z in range(5,400, 10)]
+pressures["z"] = [z for z in range(1,51, 1)]
 timesteps = [1]#, 20, 30, 50, 75, 100]
 
 index = 9
-for t in timesteps:
-    #t = 193
+for t in range(397):
+    #t = 1900
     print(name + '.out.satur.'+('{:05d}'.format(t))+'.pfb')
     #data = pfr.read(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')
     data = SLOTH.sloth.IO.read_pfb(name + '.out.press.'+ ('{:05d}'.format(t)) + '.pfb')

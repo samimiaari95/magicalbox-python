@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import math
 from sklearn.metrics import r2_score, mean_absolute_error
-from utils import powerlaw
+from utils import powerlaw_func
 
 
 
@@ -215,7 +215,8 @@ def plot_analytical_numerical():
 def fit_SWCC():
     def van_genuchten_maulem_k(h, alfa, n):
         m = 1-1/n
-        k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
+        #k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m)))**(2))/((1+(alfa*h)**(n))**(m/2))
+        k = ((1-((alfa*h)**(n-1))*((1+(alfa*h)**(n))**(-m))))/((1+(alfa*h)**(n))**(m/2))
         return k#np.log(k)
     def gardner_k(h, c):
         k = np.exp(-c*h)
@@ -349,12 +350,12 @@ def fit_scalinglaw():
             x_axis.append(x)
     
     # Fit the function
-    params, covariance = curve_fit(powerlaw, x_axis, y_axis)
+    params, covariance = curve_fit(powerlaw_func, x_axis, y_axis)
     a_fit, b_fit = params
     print(f"Fitted a: {a_fit} and b:{b_fit}")
 
     # Generate data points for the fitted curve
-    y_fit = [powerlaw(x, a_fit, b_fit) for x in x_axis]
+    y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_axis]
 
     # calculate fitting accuracy
     R_square = r2_score(y_axis, y_fit)
@@ -367,7 +368,7 @@ def fit_scalinglaw():
     print(f"MAE = {MAE}")
     
     x_fit = [min(x_axis), max(x_axis)]
-    y_fit = [powerlaw(x, a_fit, b_fit) for x in x_fit]
+    y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_fit]
 
     plt.figure(figsize=(16,9))
     plt.grid(True)
@@ -435,12 +436,12 @@ def soil_type_colormap():
         colors.extend([soil]*len(x_axis))
 
     # Fit the function
-    params, covariance = curve_fit(powerlaw, x_all, y_all)
+    params, covariance = curve_fit(powerlaw_func, x_all, y_all)
     a_fit, b_fit = params
     print(f"Fitted a: {a_fit} and b:{b_fit}")
 
     # Generate data points for the fitted curve
-    y_fit = [powerlaw(x, a_fit, b_fit) for x in x_all]
+    y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_all]
 
     # calculate fitting accuracy
     R_square = r2_score(y_all, y_fit)
@@ -453,7 +454,7 @@ def soil_type_colormap():
     print(f"MAE = {MAE}")
     
     x_fit = [min(x_all), max(x_all)]
-    y_fit = [powerlaw(x, a_fit, b_fit) for x in x_fit]
+    y_fit = [powerlaw_func(x, a_fit, b_fit) for x in x_fit]
     
     plt.plot(x_fit, y_fit, color="k", label="fitted line", linewidth=5)
     plt.annotate(f"R²={round(R_square, 2)}\nt*Ks/d={round(a_fit, 2)}Kr^({round(b_fit, 2)})", xy=(0.001, 0.01), color="black")
@@ -468,4 +469,4 @@ def soil_type_colormap():
     ax.show()
 
 
-soil_type_colormap()
+fit_SWCC()

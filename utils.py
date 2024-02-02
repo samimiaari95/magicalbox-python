@@ -56,6 +56,9 @@ def plotlog_show(x_axis, y_axis, color="k", linestyle="-", label=None, xlabel="x
         plt.legend()
     plt.show()
 
-def powerlaw(h, a, b):
+def powerlaw_func(h, a, b):
         y = a*(h**b)
         return y
+
+def linear_law(x, a, b) :
+        return a + x * b

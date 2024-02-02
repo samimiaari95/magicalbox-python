@@ -7,11 +7,18 @@ import SLOTH.sloth.PlotLib
 import SLOTH.sloth.mapper
 import os
 import re
+import random
 import shutil
 from datetime import date, timedelta
+import matplotlib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
+from scipy.stats import powerlaw, kstest
+from utils import powerlaw_func, linear_law
+from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score, mean_absolute_error
+
 
 
 
@@ -2168,9 +2175,10 @@ def plot_qk_ss():
         t = df[t_column].iloc[i]
         if k>=q and t!=0 and (q/k)>=0.001:
             #t = (alfa*k*t)/(theta_s-theta_r)
-            
-            x = q/k
-            y = t*q/d
+            x = q/(k*d*alfa)
+            y = t*k*alfa/((theta_s-theta_r))
+            #x = q/k
+            #y = t*q/d
             
             y_axis.append(y)
             x_axis.append(x)
@@ -2238,16 +2246,10 @@ def plot_qk_ss_drainage():
     from scipy.optimize import curve_fit
     from sklearn.metrics import r2_score, mean_absolute_error
     import math
+
     print("drainage case")
-    def powerlaw_fit(h, a, b):
-        y = (a)*(h**b)
-        # decay function
-        #y = (a)*np.exp(-b*h)
-        return y
     plt.rcParams.update({'font.size': 22})
-    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_exfiltration1.csv' # with watertable depth, k, q
-    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/all_settings_v2.csv' # with watertable depth
-    #filepath = '/p/project/cslts/miaari1/python_scripts/outputs/qk_ss.csv' # without watertable depth
+    filepath = '/p/project/cslts/miaari1/python_scripts/outputs/testcases_drainage.csv' # with watertable depth, k, q
     
     q_column = "q"
     k_column = "k"
@@ -2256,18 +2258,11 @@ def plot_qk_ss_drainage():
     alfa_column = "alfa"
     theta_r_column = "theta_r"
     theta_s_column = "theta_s"
-    t_column = "time"
+    inf_t_column = "inf_time"
+    exf_t_column = "exf_time"
     df = pd.read_csv(filepath)
 
     df = df.dropna()
-    #print(df)
-    
-    #alfa = 1
-    #L = 4 # not accounting for the vertical profile, for d=3m then L=3m
-    #n = 2
-    #Ks = 1 #m/hr
-    #theta_s = 1
-    #theta_r = 0.2
 
     t_list = []
     x_axis = []
@@ -2280,54 +2275,61 @@ def plot_qk_ss_drainage():
         alfa = df[alfa_column].iloc[i]
         theta_r = df[theta_r_column].iloc[i]
         theta_s = df[theta_s_column].iloc[i]
-        t = df[t_column].iloc[i]
-        if k>=q and t!=0:
+        inf_t = df[inf_t_column].iloc[i]
+        exf_t = df[exf_t_column].iloc[i]
+        if k>=q and inf_t!=0:
             #q = q/Ks
             #k = k/Ks
             #d = alfa*d
-            t = (alfa*k*t)/(theta_s-theta_r)
+            #t = (alfa*k*t)/(theta_s-theta_r)
             #L = alfa*d
             
-            x = alfa*d
+            x = alfa*d*n
             #x = alfa*d
             #x = (k*t/(d))
             #y = ((alfa*d*d)/((t)))**(1-1/n) #best performance
             #y = (k*t/(d))**(1-1/n)
-            y = t
+            y = exf_t * k * alfa
             #y = (alfa*k*t)**(1-1/n) # best dimensionless
-            #y_pred = (3.4743488481411937)*(x**(-0.43044273123818805))
-            #t_pred = (y_pred*y_pred*alfa*d*d)/(Ks)
-            #t_list.append(abs(t_pred-t))
             y_axis.append(y)
             x_axis.append(x)
 
-    params, covariance = curve_fit(powerlaw_fit, x_axis, y_axis)
+    # linearize
+    y_lin = np.log(y_axis)
+    x_lin = np.log(x_axis)
+
+    params, covariance = curve_fit(linear_law, x_lin, y_lin)
     # Extract the fitted parameters
     a_fit, b_fit = params
+    #a_fit = 0.515778918078865
+    #b_fit = 2.92089838415826
 
     # Print the results
     print(f"Fitted a: {a_fit} and b:{b_fit}")
-
+    print(f"a: {np.exp(a_fit)} and b: {b_fit}")
     # Generate data points for the fitted curve
-    x_fit = [min(x_axis), max(x_axis)]
-    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_axis]
+    #y_fit = [np.exp(linlaw(x, a_fit, b_fit)) for x in x_lin]
+    y_fit = [powerlaw_func(x, np.exp(a_fit), b_fit) for x in x_axis]
+
+    R_square=1-(np.sum((np.array(y_axis)-np.array(y_fit))**2)/np.sum((np.array(y_axis)-np.array(np.mean(y_axis)))**2))
     R_square = r2_score(y_axis, y_fit)
     print(f"R2 = {R_square}")
-    MSE = np.square(np.subtract(y_axis,y_fit)).mean()
-    print(f"MSE = {MSE*10**-9} x10⁹")
-    RMSE = math.sqrt(MSE)
-    print(f"RMSE = {RMSE}")
-    MAE = mean_absolute_error(y_axis, y_fit)
-    print(f"MAE = {MAE}")
-    #print(f"max t = {np.max(t_list)} min t = {np.min(t_list)}")
-    
-    y_fit = [powerlaw_fit(x, a_fit, b_fit) for x in x_fit]
+    r = np.corrcoef(y_axis, y_fit)
+    r2 = r**2
+    print(r2)
 
+    y_fit = [linear_law(x, a_fit, b_fit) for x in x_lin]
+    R_square = r2_score(y_lin, y_fit)
+    print(f"R2 = {R_square}")
+    r = np.corrcoef(y_lin, y_fit)
+    r2 = r**2
+    print(r2)
+    
     plt.figure(figsize=(16,9))
     plt.grid(True)
     plt.scatter(x_axis, y_axis, label="data points", s=30, facecolors='r', edgecolors='r')
-    plt.plot(x_fit, y_fit, color="black", label="fitted line")
-    #plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
+    #plt.plot(x_fit, y_fit, color="black", label="fitted line")
+    plt.scatter(x_axis, y_fit, s=30, facecolors='b', edgecolors='b')# color="black", label="fitted")
     #plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(0.0001, 1), color="black")
     plt.annotate(f"R²={round(R_square, 3)}\nf(x)={round(a_fit, 3)}x^({round(b_fit, 3)})", xy=(1, 7), color="black")
     
@@ -2591,23 +2593,22 @@ def simulation_bash():
     f = open(filepath, "r")
     sbatch = f.readlines()
     f.close()
-    sbatch = sbatch[:13]
-    for i in range(len(os.listdir(dir_path))):
-        #case_path = os.path.join(dir_path, f"test_case{i}")
+    sbatch = sbatch[:15]
+    run_command = "tclsh infiltration.tcl"
+    run_command_2 = "tclsh exfiltration.tcl"    
+    for i in range(1550, 1600):
         case_path = f"cd /p/scratch/cslts/miaari1/testcases/test_case{i}"
-        run_command = "tclsh infiltration.tcl"
-        run_command_2 = "tclsh exfiltration.tcl"
         sbatch.append(case_path)
         sbatch.append(run_command)
         sbatch.append(run_command_2)
     
-    with open("/p/project/cslts/miaari1/submit_simulation_advanced.sh", 'w') as sbatchfile:
+    with open("/p/project/cslts/miaari1/submit_simulation_advanced8.sh", 'w') as sbatchfile:
         sbatchfile.write('\n'.join(sbatch))
     sbatchfile.close()
 
 
 def steadystate_kinsol():
-    # exfiltration
+    # infiltration
     dir_path = "/p/scratch/cslts/miaari1/testcases"
     data = {"q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "time": []}
     for case_index in range(len(os.listdir(dir_path))):
@@ -2620,7 +2621,7 @@ def steadystate_kinsol():
 
         
 
-        kinsolfile = os.path.join(case_dir, "exfiltration.out.kinsol.log")
+        kinsolfile = os.path.join(case_dir, "infiltration.out.kinsol.log")
         if not os.path.exists(kinsolfile):
             print("doesn't exit")
             continue
@@ -2648,20 +2649,103 @@ def steadystate_kinsol():
     print(len(data["time"]))
     df = pd.DataFrame(data)
     print(df)
-    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "testcases_exfiltration1.csv"), index=False)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "infiltration_testcases.csv"), index=False)
+
+def steadystate_kinsol_drain_inf(case_index):
+    # infiltration related to drainage script
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+
+    reached = False
+    case_dir = os.path.join(dir_path, f"test_case{case_index}")
+    f = open(os.path.join(case_dir, "settings.txt"), "r")
+    settings = f.readlines()
+    f.close()
+    kinsolfile = os.path.join(case_dir, "infiltration.out.kinsol.log")
+    if not os.path.exists(kinsolfile):
+        print(f" infiltration doesn't exit for {case_index}")
+        return None
+    filedata = open(kinsolfile)
+    lines = filedata.readlines()
+    time_kinsol = [x for x in lines if "KINSOL starting step for time" in x or "KINSolInit nni=    0  fnorm=" in x]
+    for i in range(1, len(time_kinsol)):
+        if "KINSolInit nni=    0  fnorm=" not in time_kinsol[i] and "KINSolInit nni=    0  fnorm=" not in time_kinsol[i-1]:
+            index = i-1
+            time = re.findall("\d+\.\d+",time_kinsol[index])
+
+            time = float(time[0])
+            reached = True
+            break
+        if i == len(time_kinsol)-1 and not reached:
+            print(f" infiltration not reached: {case_index}")
+            return None
+    return time
+
+def steadystate_kinsol_drainage():
+    # exfiltration
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    data = {"case_index": [], "q": [], "k": [], "d": [], "alfa": [], "n": [], "theta_r": [], "theta_s": [], "inf_time": [], "exf_time": []}
+    for case_index in range(len(os.listdir(dir_path))):
+        print(case_index)
+        reached = False
+        case_dir = os.path.join(dir_path, f"test_case{case_index}")
+        f = open(os.path.join(case_dir, "settings.txt"), "r")
+        settings = f.readlines()
+        f.close()
+
+        inf_time = steadystate_kinsol_drain_inf(case_index)
+        if inf_time:
+            kinsolfile = os.path.join(case_dir, "exfiltration.out.kinsol.log")
+            if not os.path.exists(kinsolfile):
+                print("doesn't exit")
+                continue
+            filedata = open(kinsolfile)
+            lines = filedata.readlines()
+            time_kinsol = [x for x in lines if "KINSOL starting step for time" in x or "KINSolInit nni=    0  fnorm=" in x]
+            for i in range(1, len(time_kinsol)):
+                if "KINSolInit nni=    0  fnorm=" not in time_kinsol[i] and "KINSolInit nni=    0  fnorm=" not in time_kinsol[i-1]:
+                    index = i-1
+                    time = re.findall("\d+\.\d+",time_kinsol[index])
+                    #print(time)
+                    time = float(time[0])
+                    data["inf_time"].append(inf_time)
+                    data["exf_time"].append(time)
+                    data["k"].append(float(settings[1].replace("\n","")))
+                    data["q"].append(float(settings[2].replace("\n","")))
+                    data["alfa"].append(float(settings[3].replace("\n","")))
+                    data["n"].append(float(settings[4].replace("\n","")))
+                    data["theta_r"].append(float(settings[5].replace("\n","")))
+                    data["theta_s"].append(float(settings[6].replace("\n","")))
+                    data["d"].append(float(settings[7].replace("\n","")))
+                    data["case_index"].append(case_index)
+                    reached = True
+                    break
+                if i == len(time_kinsol)-1 and not reached:
+                    print(f"not reached: {case_index}")
+    print(len(data["exf_time"]))
+    df = pd.DataFrame(data)
+    print(df)
+    df.to_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "outputs", "drainage_inf_testcases.csv"), index=False)
+
 
 
 def parflow_namelist_infiltration():
-    import random
     dir_path = "/p/scratch/cslts/miaari1/testcases"
-    filepath = "/p/project/cslts/miaari1/python_scripts/infiltration.tcl"
-    parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
+    filepath = "/p/project/cslts/miaari1/backups/infiltration.tcl"
+    VG_params_path = "/p/project/cslts/miaari1/python_scripts/WaterFlowParameters.csv"
     f = open(filepath, "r")
     namelist = f.readlines()
     f.close()
 
-    parameters_df = pd.read_csv(parameters_path)
-    
+    #k_range = [0.00001, 10]
+    #q_range = [0.00001, 10]
+    #alfa_range = [0.5, 10]
+    #n_range = [1, 3]
+    d_range = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    #thetar_range = [0, 0.2]
+    #thetas_range = [0.5, 1]
+    VG_params = pd.read_csv(VG_params_path)
+    VG_indexes = [0,1,2,3,4,5,6,7,8,9,10,11]
+
     k_namelist = namelist[64]
     q_namelist = namelist[214]
     d_namelist = namelist[54]
@@ -2670,41 +2754,45 @@ def parflow_namelist_infiltration():
     alfa_namelist2 = namelist[151]
     n_namelist1 = namelist[143]
     n_namelist2 = namelist[152]
-    thetar_namelist = namelist[153]
-    thetas_namelist = namelist[154]
-    stoptime_namelist = namelist[117]
-    dumpinterval_namelist = namelist[118]
+    # TODO change theta namelists
+    porosity_namelist = namelist[129]
+    Ssat_namelist = namelist[154]
+    Sres_namelist = namelist[153]
 
-    for i in range(len(parameters_df)):
+    for i in range(1000):
         new_namelist = namelist
         case_path = os.path.join(dir_path, f"test_case{i}")
         os.mkdir(case_path)
 
-        # define variables
-        q = parameters_df["q"].iloc[i]
-        k = parameters_df["k"].iloc[i]
-        d = parameters_df["d"].iloc[i]
-        alfa = parameters_df["alfa"].iloc[i]
-        n = parameters_df["n"].iloc[i]
-        theta_r = parameters_df["theta_r"].iloc[i]
-        theta_s = parameters_df["theta_s"].iloc[i]
-        inf_time = parameters_df["time"].iloc[i]
+        VG_index = random.choice(VG_indexes)
+        
+        alfa = VG_params["Alpha"].iloc[VG_index]
+        n = VG_params["n"].iloc[VG_index]
+        theta_r = VG_params["Sr"].iloc[VG_index]
+        theta_s = VG_params["Ss"].iloc[VG_index]
+        k = VG_params["Ks"].iloc[VG_index]
 
-        # change namelist
+        q_k = random.uniform(0.0001, 1)
+        q = q_k * k
+        
         new_namelist[64] = k_namelist.replace("0.01",f"{k}")
         new_namelist[214] = q_namelist.replace("0.001", f"{q}")
-        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
-        new_namelist[31] = Nz_namelist.replace("40", f"{int(d*10)}")
+        #alfa = round(random.uniform(alfa_range[0], alfa_range[1]),2)
+        #n = round(random.uniform(n_range[0], n_range[1]),2)
         new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
         new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
         new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
         new_namelist[152] = n_namelist2.replace("2.0", f"{n}")
-        new_namelist[153] = thetar_namelist.replace("0.2", f"{theta_r}")
-        new_namelist[154] = thetas_namelist.replace("1.0", f"{theta_s}")
-        new_namelist[117] = stoptime_namelist.replace("5000.0", f"{inf_time}")
-        new_namelist[118] = dumpinterval_namelist.replace("1000.0", f"{inf_time}")
+        #theta_r = round(random.uniform(thetar_range[0], thetar_range[1]),2)
+        #theta_s = round(random.uniform(thetas_range[0], thetas_range[1]),2)
+        new_namelist[129] = porosity_namelist.replace("0.5", f"{theta_s}") # porosity = theta_s
+        #new_namelist[154] = Ssat_namelist.replace("1.0", f"{theta_s/theta_s}") # porosity/theta_s
+        new_namelist[153] = Sres_namelist.replace("0.2", f"{theta_s/theta_r}") # porosity/theta_r
+        d = random.choice(d_range)
+        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
 
-        # save tcl
+        new_namelist[31] = Nz_namelist.replace("40", f"{int(d/0.1)}")
+
         settings = ["k,q,alfa,n,theta_r,theta_s,d",f"{k}",f"{q}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
         with open(os.path.join(dir_path, f"test_case{i}", "settings.txt"),'w') as settingsfile:
             settingsfile.write('\n'.join(settings))
@@ -2719,8 +2807,8 @@ def parflow_namelist_infiltration():
 def parflow_namelist_drainage():
     import random
     dir_path = "/p/scratch/cslts/miaari1/testcases"
-    filepath = "/p/project/cslts/miaari1/python_scripts/exfiltration.tcl"
-    parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
+    filepath = "/p/project/cslts/miaari1/python_scripts/backups/exfiltration.tcl"
+    #parameters_path = "/p/project/cslts/miaari1/python_scripts/outputs/infiltration_testcases.csv"
     f = open(filepath, "r")
     namelist = f.readlines()
     f.close()
@@ -2743,7 +2831,7 @@ def parflow_namelist_drainage():
         #os.mkdir(case_path)
 
         # define variables
-        q = parameters_df["q"].iloc[i]
+        #q = parameters_df["q"].iloc[i]
         k = parameters_df["k"].iloc[i]
         d = parameters_df["d"].iloc[i]
         alfa = parameters_df["alfa"].iloc[i]
@@ -2777,6 +2865,94 @@ def parflow_namelist_drainage():
         tclfile.close()
     return
 
+def parflow_namelist_inex():
+    dir_path = "/p/scratch/cslts/miaari1/testcases"
+    filepath = "/p/project/cslts/miaari1/python_scripts/backups/infiltration.tcl"
+    exfilepath = "/p/project/cslts/miaari1/python_scripts/backups/exfiltration.tcl"
+    VG_params_path = "/p/project/cslts/miaari1/python_scripts/backups/WaterFlowParameters.csv"
+    
+    f = open(filepath, "r")
+    namelist = f.readlines()
+    f.close()
+
+    exf = open(exfilepath, "r")
+    exnamelist = exf.readlines()
+    exf.close()
+
+    d_range = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    VG_params = pd.read_csv(VG_params_path)
+    VG_indexes = [0,1,2,3,4,5,6,7,8,9,10,11]
+
+    k_namelist = namelist[64]
+    q_namelist = namelist[214]
+    d_namelist = namelist[54]
+    Nz_namelist = namelist[31]
+    alfa_namelist1 = namelist[142]
+    alfa_namelist2 = namelist[151]
+    n_namelist1 = namelist[143]
+    n_namelist2 = namelist[152]
+    porosity_namelist = namelist[129]
+    Ssat_namelist = namelist[154]
+    Sres_namelist = namelist[153]
+
+    for i in range(1400, 1600):
+        new_namelist = namelist
+        exnew_namelist = exnamelist
+        case_path = os.path.join(dir_path, f"test_case{i}")
+        os.mkdir(case_path)
+
+        VG_index = random.choice(VG_indexes)
+        
+        alfa = VG_params["Alpha"].iloc[VG_index]
+        n = VG_params["n"].iloc[VG_index]
+        theta_r = VG_params["Sr"].iloc[VG_index]
+        theta_s = VG_params["Ss"].iloc[VG_index]
+        k = VG_params["Ks"].iloc[VG_index]
+
+        q_k = random.uniform(0.0001, 0.001)
+        q = q_k * k
+
+        # infiltration        
+        new_namelist[64] = k_namelist.replace("0.01",f"{k}")
+        new_namelist[214] = q_namelist.replace("0.001", f"{q}")
+        new_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
+        new_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
+        new_namelist[143] = n_namelist1.replace("2.0", f"{n}")
+        new_namelist[152] = n_namelist2.replace("2.0", f"{n}")
+        new_namelist[129] = porosity_namelist.replace("0.5", f"{theta_s}") # porosity = theta_s
+        new_namelist[153] = Sres_namelist.replace("0.2", f"{theta_r/theta_s}") # theta_r/porosity
+        d = random.choice(d_range)
+        new_namelist[54] = d_namelist.replace("4.0", f"{d}")
+        new_namelist[31] = Nz_namelist.replace("40", f"{int(d/0.1)}")
+
+        # exfiltration
+        exnew_namelist[64] = k_namelist.replace("0.01",f"{k}")
+        #exnew_namelist[214] = q_namelist.replace("0.001", f"{q}")
+        exnew_namelist[142] = alfa_namelist1.replace("1.0", f"{alfa}")
+        exnew_namelist[151] = alfa_namelist2.replace("1.", f"{alfa}")
+        exnew_namelist[143] = n_namelist1.replace("2.0", f"{n}")
+        exnew_namelist[152] = n_namelist2.replace("2.0", f"{n}")
+        exnew_namelist[129] = porosity_namelist.replace("0.5", f"{theta_s}") # porosity = theta_s
+        exnew_namelist[153] = Sres_namelist.replace("0.2", f"{theta_r/theta_s}") # theta_r/porosity
+        #d = random.choice(d_range)
+        exnew_namelist[54] = d_namelist.replace("4.0", f"{d}")
+        exnew_namelist[31] = Nz_namelist.replace("40", f"{int(d/0.1)}")
+
+
+        settings = ["k,q,alfa,n,theta_r,theta_s,d",f"{k}",f"{q}",f"{alfa}",f"{n}",f"{theta_r}", f"{theta_s}",f"{d}"]
+        with open(os.path.join(dir_path, f"test_case{i}", "settings.txt"),'w') as settingsfile:
+            settingsfile.write('\n'.join(settings))
+        settingsfile.close()
+
+        with open(os.path.join(dir_path, f"test_case{i}", "infiltration.tcl"), 'w') as tclfile:
+            tclfile.write('\n'.join(new_namelist))
+        tclfile.close()
+
+        with open(os.path.join(dir_path, f"test_case{i}", "exfiltration.tcl"), 'w') as extclfile:
+            extclfile.write('\n'.join(exnew_namelist))
+        extclfile.close()
+    return
+
 def append_csv():
     df_path = "/p/project/cslts/miaari1/python_scripts/outputs/testcases_appended.csv"
     df1_path = "/p/project/cslts/miaari1/python_scripts/testcases_4.csv"
@@ -2806,39 +2982,6 @@ def plot_pdf(data):
     plt.grid(True)
     plt.show()
 
-def optimize_power(initial_data):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.optimize import curve_fit
-
-    # Generate initial data (you should replace this with your actual data)
-    #initial_data = np.random.exponential(scale=2, size=1000)
-
-    # Define the power-law function
-    def power_law(x, c):
-        return x**c
-
-    # Define an initial guess for the parameters
-    initial_guess = [-2]
-
-    # Fit the data to the power-law function
-    params, covariance = curve_fit(power_law, initial_data, np.arange(len(initial_data)), p0=initial_guess)
-
-    # Extract the optimized parameters
-    optimized_c = params
-    print(optimized_c)
-    # Apply the optimized constant power    
-    transformed_data = initial_data ** optimized_c
-
-    # Plot initial and transformed data
-    plt.hist(initial_data, bins=30, alpha=0.5, label='Initial Data')
-    plt.hist(transformed_data, bins=30, alpha=0.5, label=f'Transformed Data (Power={optimized_c:.2f})')
-
-    plt.legend()
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-    plt.title('Initial and Transformed Data')
-    plt.show()
 
 def plot_ss_profiles():
     plt.rcParams.update({'font.size': 22})
@@ -2865,10 +3008,105 @@ def plot_ss_profiles():
     plt.legend()
     plt.show()
 
+
+def KS_fit():
+    # Generate synthetic data following a power-law distribution
+    alpha = 2.5  # Power-law exponent
+    data_size = 1000
+    synthetic_data = powerlaw.rvs(alpha, size=data_size)
+
+    # Perform Kolmogorov-Smirnov test for goodness of fit
+    ks_statistic, ks_p_value = kstest(synthetic_data, 'powerlaw', args=(alpha,))
+
+    # Plot the synthetic data and power-law fit
+    plt.figure(figsize=(16, 9))
+    plt.hist(synthetic_data, bins=50, density=True, alpha=0.7, label='Synthetic Data')
+    xmin, xmax = plt.xlim()
+    x_values = np.linspace(xmin, xmax, 100)
+    pdf_values = powerlaw.pdf(x_values, alpha)
+    plt.plot(x_values, pdf_values, 'r-', label='Power-law Fit')
+
+    plt.title(f'Goodness of Fit: KS Statistic = {ks_statistic:.4f}, p-value = {ks_p_value:.4f}')
+    plt.xlabel('Value')
+    plt.ylabel('Probability Density')
+    plt.legend()
+    plt.show()
+
+
+def plot_var_alfa_n():
+    def plot8(q, k, d, n, alfa, theta_r, theta_s, t):
+        x = (q)/(k*alfa*d)
+        y = t
+        xlabel = "q/(k*d*alpha)"
+        ylabel = "t"
+        return x, y, xlabel, ylabel
+
+    inf_cases_path = '/p/project/cslts/miaari1/python_scripts/parflow/var_alfan/infiltration_modalfa.csv'
+
+    q_column = "q"
+    k_column = "k"
+    d_column = "d"
+    n_column = "n"
+    alfa_column = "alfa"
+    theta_r_column = "theta_r"
+    theta_s_column = "theta_s"
+    t_column = "time"
+    df = pd.read_csv(inf_cases_path)
+    modalfadf = df[909:]#df[896:]
+    print(modalfadf)
+    df = df[:909]#df[:896]
+    soil_types = list(df[k_column].unique())
+    soil_types.sort()
+
+    ax = plt
+    ax.figure(figsize=(16,9))
+    x_all = []
+    y_all = []
+    for i in range(len(df)):
+        q = df[q_column].iloc[i]
+        k = df[k_column].iloc[i]
+        d = df[d_column].iloc[i]
+        n = df[n_column].iloc[i]
+        alfa = df[alfa_column].iloc[i]
+        theta_r = df[theta_r_column].iloc[i]
+        theta_s = df[theta_s_column].iloc[i]
+        t = df[t_column].iloc[i]
+        if k>=q and t!=0 and (q/k)>=0.001:
+            x, y, xlabel, ylabel = plot8(q, k, d, n, alfa, theta_r, theta_s, t)
+            y_all.append(y)
+            x_all.append(x)
+    x_mod = []
+    y_mod = []
+    for i in range(len(modalfadf)):
+        q = modalfadf[q_column].iloc[i]
+        k = modalfadf[k_column].iloc[i]
+        d = modalfadf[d_column].iloc[i]
+        n = modalfadf[n_column].iloc[i]
+        alfa = modalfadf[alfa_column].iloc[i]
+        theta_r = modalfadf[theta_r_column].iloc[i]
+        theta_s = modalfadf[theta_s_column].iloc[i]
+        t = modalfadf[t_column].iloc[i]
+        if k>=q and t!=0 and (q/k)>=0.001:
+            x, y, xlabel, ylabel = plot8(q, k, d, n, alfa, theta_r, theta_s, t)
+            y_mod.append(y)
+            x_mod.append(x)
+    
+    ax.scatter(x_all, y_all,c="k", cmap='jet', s=30)
+    ax.scatter(x_mod, y_mod,c="r", cmap='jet', s=30)
+    ax.grid(True)
+    ax.xscale("log")
+    ax.yscale("log")
+    ax.xlabel(f"{xlabel}") # α
+    ax.ylabel(f"{ylabel}")
+    ax.show()
+
 #plot_ss_profiles()
 #plot_qk_ss()
-plot_qk_ss_drainage()
-#parflow_namelist()
+#plot_qk_ss_drainage()
+#parflow_namelist_infiltration()
 #simulation_bash()
-#steadystate_kinsol()
+#parflow_namelist_inex()
 #append_csv()
+steadystate_kinsol_drainage()
+#steadystate_kinsol()
+#plot_var_alfa_n()
